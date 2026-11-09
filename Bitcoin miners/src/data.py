@@ -117,12 +117,16 @@ def align_prices(raw: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFra
     frames, report = [], []
     for col, df in raw.items():
         sub = df.reindex(days)[list(PRICE_FIELDS)].rename(columns=PRICE_FIELDS)
+        # Provider placeholder rows (volume 0 and High == Low) are not real sessions: treat them as missing.
+        stale = (sub["volume"] == 0) & (sub["high"] == sub["low"])
+        sub.loc[stale, :] = np.nan
         n_missing = int(sub["adj_close"].isna().sum())
         missing_dates = [d.strftime("%Y-%m-%d") for d in sub.index[sub["adj_close"].isna()]]
         price_cols = ["open", "high", "low", "close", "adj_close"]
         sub[price_cols] = sub[price_cols].ffill()
-        sub["volume"] = sub["volume"].fillna(0)
-        report.append({"asset": col, "trading_days": len(days), "missing_before_fill": n_missing,
+        sub["volume"] = sub["volume"].fillna(0).astype("int64")  # share counts are integers in CSV and Parquet alike
+        report.append({"asset": col, "trading_days": len(days), "stale_rows": int(stale.sum()),
+                       "missing_before_fill": n_missing,
                        "missing_after_fill": int(sub["adj_close"].isna().sum()),
                        "missing_dates": ", ".join(missing_dates) if missing_dates else ""})
         sub.columns = [f"{col}_{c}" for c in sub.columns]
@@ -190,7 +194,7 @@ def set_trading_freq(df: pd.DataFrame) -> pd.DataFrame:
 
 def market_holidays(index: pd.DatetimeIndex) -> list[str]:
     """Weekdays inside the window without trading (exchange holidays and special closures)."""
-    return [d.strftime("%Y-%m-%d") for d in trading_freq(index).holidays]
+    return [str(d)[:10] for d in trading_freq(index).holidays]
 
 
 def save_panel(panel: pd.DataFrame) -> dict:

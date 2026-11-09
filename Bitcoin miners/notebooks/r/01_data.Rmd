@@ -1,0 +1,87 @@
+---
+title: "01 — Data (R): load the processed panel and cross-check with Python"
+subtitle: "Did Bitcoin miners leave Bitcoin for AI? — Phase 1"
+output:
+  html_document:
+    toc: true
+    df_print: kable
+---
+
+Packages: `yaml`, `xts`, `zoo`, `tsibble`, `dplyr`, `knitr`, `rmarkdown` (install with `Rscript R/install_packages.R`).
+
+This notebook does **not** download or transform anything. It reads the file written by
+`notebooks/python/01_data.ipynb` (`data/processed/panel.csv`) and checks that R sees exactly the same data.
+
+```{r setup, include=FALSE}
+# Resolve the project root once so every path below is relative to it, whatever folder knitr runs in.
+ROOT <- dirname(normalizePath(knitr::current_input(dir = TRUE), winslash = "/"))
+while (!file.exists(file.path(ROOT, "config.yaml"))) ROOT <- dirname(ROOT)
+source(file.path(ROOT, "R", "load_data.R"))
+knitr::opts_knit$set(root.dir = ROOT)
+knitr::opts_chunk$set(echo = TRUE, comment = "")
+cfg <- load_config(ROOT)
+set.seed(cfg$seed)  # same seed as Python, even though this phase has no randomness
+```
+
+## 1. Load as a native time-series object (xts)
+
+```{r load}
+# xts keeps the explicit Date index, which handles the irregular trading calendar (no rows on weekends/holidays).
+panel <- load_panel(ROOT)
+cat("class:", class(panel), "\n")
+cat("observations:", nrow(panel), "| columns:", ncol(panel), "\n")
+cat("period:", format(start(panel)), "->", format(end(panel)), "\n")
+print(periodicity(panel))
+```
+
+```{r tsibble}
+# tsibble view for the tidyverts tools of later phases; trading days are not a regular calendar, hence regular = FALSE.
+suppressPackageStartupMessages({library(tsibble); library(dplyr)})
+# zoo:: prefix because tsibble masks index().
+tb <- tibble(Date = zoo::index(panel), as.data.frame(zoo::coredata(panel), check.names = FALSE)) |>
+  as_tsibble(index = Date, regular = FALSE)
+cat("tsibble rows:", nrow(tb), "| index = Date | regular:", is_regular(tb), "(irregular = trading days, by design)\n")
+```
+
+## 2. Missing values
+
+```{r na}
+# Only rolling-window warm-ups and the first return should be NA, exactly as in Python.
+na <- colSums(is.na(coredata(panel)))
+na <- na[na > 0]
+feat <- sub("^[^_]+_", "", names(na))
+print(tapply(feat, na, function(f) paste(sort(unique(f)), collapse = ", ")))
+cat("columns with NA:", length(na), "of", ncol(panel), "\n")
+```
+
+## 3. Chronological split (dates read from config.yaml)
+
+```{r split}
+# The split is computed once in Python and stored in config.yaml so both languages use the same test set.
+s <- split_panel(panel, cfg)
+data.frame(set = c("train", "test"),
+           n = c(nrow(s$train), nrow(s$test)),
+           start = c(format(start(s$train)), format(start(s$test))),
+           end = c(format(end(s$train)), format(end(s$test))))
+stopifnot(nrow(s$train) == cfg$split$n_train, nrow(s$test) == cfg$split$n_test)
+```
+
+## 4. Cross-check with Python
+
+```{r crosscheck}
+# Recompute the same statistics as Python and compare: identical data => differences at floating-point noise level.
+py <- read.csv(file.path(ROOT, cfg$paths$results, "01_summary_python.csv"), stringsAsFactors = FALSE)
+r <- summary_stats(panel, py$column)
+stopifnot(identical(r$column, py$column))
+num <- c("count", "mean", "std", "min", "max")
+rel_diff <- abs(as.matrix(r[, num]) - as.matrix(py[, num])) / pmax(abs(as.matrix(py[, num])), 1e-12)
+cat("max relative difference R vs Python:", signif(max(rel_diff), 3), "\n")
+stopifnot(max(rel_diff) < 1e-9)
+cat("R and Python read identical data: TRUE\n")
+knitr::kable(r, digits = 4)
+```
+
+```{r session}
+# Package versions, for reproducibility (brief §9.1).
+sessionInfo()
+```

@@ -35,13 +35,13 @@ features:
 split:
   train_frac: 0.9
   # Filled automatically by notebooks/python/01_data.ipynb (do not edit by hand).
-  n_obs: null
-  n_train: null
-  n_test: null
-  train_start: null
-  train_end: null
-  test_start: null
-  test_end: null
+  n_obs: 1225
+  n_train: 1102
+  n_test: 123
+  train_start: "2021-12-14"
+  train_end: "2026-05-06"
+  test_start: "2026-05-07"
+  test_end: "2026-10-30"
 
 # Date of the AI pivot (structural break). Decided in a later phase.
 pivot_date: null

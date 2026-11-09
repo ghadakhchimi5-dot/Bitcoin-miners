@@ -1,9 +1,7 @@
 """Shared plotting style so every figure in the report looks the same."""
 from __future__ import annotations
 
-import matplotlib
-
-matplotlib.use("Agg")  # headless backend: figures render identically in nbconvert and Jupyter
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 
 from .config import path
@@ -29,11 +27,22 @@ def set_style() -> None:
 
 def label_line_ends(ax, series: dict, colors: dict) -> None:
     """Direct labels at the right end of each line (identity never relies on colour alone)."""
-    for name, s in series.items():
-        s = s.dropna()
-        ax.annotate(f"{name} {s.iloc[-1]:,.0f}", xy=(s.index[-1], s.iloc[-1]), xytext=(4, 0),
-                    textcoords="offset points", va="center", fontsize=8, color=INK2)
-        ax.plot(s.index[-1], s.iloc[-1], "o", ms=3, color=colors[name])
+    ends = {n: s.dropna() for n, s in series.items()}
+    ends = {n: (s.index[-1], s.iloc[-1]) for n, s in ends.items()}
+    for n, (x, y) in ends.items():
+        ax.plot(x, y, "o", ms=3, color=colors[n])
+    # Push labels apart vertically (in axes fraction) so close series never print on top of each other.
+    fig_to_ax = ax.transAxes.inverted()
+    pos = sorted((fig_to_ax.transform(ax.transData.transform((mdates.date2num(x), float(y))))[1], n)
+                 for n, (x, y) in ends.items())
+    min_gap, placed = 0.05, []
+    for y, n in pos:
+        placed.append([max(y, placed[-1][0] + min_gap) if placed else y, n])
+    for (ya, n) in placed:
+        x, y = ends[n]
+        ax.annotate(f"{n} {y:,.0f}", xy=(x, y), xycoords="data", xytext=(1.01, ya),
+                    textcoords=("axes fraction"), va="center", fontsize=8, color=INK2,
+                    annotation_clip=False)
 
 
 def save(fig, name: str) -> str:

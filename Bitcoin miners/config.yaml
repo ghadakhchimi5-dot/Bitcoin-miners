@@ -1,0 +1,53 @@
+# Single source of truth for every notebook (Python and R). Edit here, never in notebooks.
+
+project: "Did Bitcoin miners leave Bitcoin for AI?"
+seed: 42
+
+# Yahoo Finance symbols. `column` is the prefix used in data/processed/panel.csv.
+assets:
+  - {ticker: IREN,    column: IREN, group: converts,  name: "IREN Ltd (ex-Iris Energy)"}
+  - {ticker: CIFR,    column: CIFR, group: converts,  name: "Cipher Mining"}
+  - {ticker: WULF,    column: WULF, group: converts,  name: "TeraWulf"}
+  - {ticker: MARA,    column: MARA, group: pure,      name: "MARA Holdings"}
+  - {ticker: CLSK,    column: CLSK, group: pure,      name: "CleanSpark"}
+  - {ticker: RIOT,    column: RIOT, group: pure,      name: "Riot Platforms"}
+  - {ticker: BTC-USD, column: BTC,  group: reference, name: "Bitcoin (USD)"}
+  - {ticker: NVDA,    column: NVDA, group: reference, name: "NVIDIA (AI factor)"}
+
+# Equal-weighted indices built from the members' daily log returns, rebased to 100.
+indices:
+  CONVERTS: [IREN, CIFR, WULF]
+  PURE: [MARA, CLSK, RIOT]
+
+dates:
+  # Raw download starts earlier so the raw CSVs show the pre-merger shell periods (documented, then dropped).
+  download_start: "2021-01-01"
+  # 2021-12-14 = first TeraWulf trading day after the IKONICS merger (latest "real miner" start in the basket).
+  start: "2021-12-14"
+  # Frozen for reproducibility.
+  end: "2026-10-31"
+
+features:
+  vol_window: 20         # realised-volatility window (trading days, ~1 month)
+  ma_windows: [20, 50]   # moving-average windows (trading days)
+  annualisation: 252     # trading days per year for annualised volatility
+
+split:
+  train_frac: 0.9
+  # Filled automatically by notebooks/python/01_data.ipynb (do not edit by hand).
+  n_obs: null
+  n_train: null
+  n_test: null
+  train_start: null
+  train_end: null
+  test_start: null
+  test_end: null
+
+# Date of the AI pivot (structural break). Decided in a later phase.
+pivot_date: null
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  figures: figures
+  results: results

@@ -207,8 +207,9 @@ Phases 1–7 are complete and reproducible from a fresh environment. Phase 8 (th
 
 ## Author
 
-**Ghada Khchimi** · Data Science & AI engineering student (SDIA), Tek-Up University
-[Portfolio](https://ghada-khchimi.vercel.app/) · [GitHub](https://github.com/ghadakhchimi5-dot)
+**Ghada Khchimi**
+**WissEM Zaouga**
+**Med Akrem Elouer** 
 
 Developed as the mini-project of the course *Séries temporelles pour la Data Science & l'IA* (Option A: financial data).
 

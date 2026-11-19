@@ -1,0 +1,37 @@
+series,model,test,parameter,H0,statistic,p_value,conclusion (5%)
+CONVERTS,"ARIMA(0,1,0)",Ljung-Box,lag 5,no autocorrelation up to lag m,5.864429676722619,0.31963484891996435,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",Ljung-Box,lag 10,no autocorrelation up to lag m,11.113424093429668,0.3487498031884351,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",Ljung-Box,lag 20,no autocorrelation up to lag m,14.454840088362793,0.8067064271670958,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",Ljung-Box on e²,lag 10,no autocorrelation of squares,4.595708948386421,0.9164998985550648,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",Ljung-Box on |e|,lag 10,no autocorrelation of absolute values,13.04122077598059,0.22137624377707,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",Jarque-Bera,,"normal residuals (skew 0, kurtosis 3)",43.83521915544438,3.02902671642234e-10,reject H0
+CONVERTS,"ARIMA(0,1,0)",Shapiro-Wilk,,normal residuals,0.9923583695334818,1.8317447556280618e-05,reject H0
+CONVERTS,"ARIMA(0,1,0)",ARCH-LM,lag 5,no ARCH effect (constant conditional variance),3.5861272984577974,0.6103974133279088,H0 not rejected
+CONVERTS,"ARIMA(0,1,0)",ARCH-LM,lag 10,no ARCH effect (constant conditional variance),4.502692989131888,0.9218342615274912,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Ljung-Box,lag 5,no autocorrelation up to lag m,3.7526868577321517,0.4405093604837701,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Ljung-Box,lag 10,no autocorrelation up to lag m,9.186686388614845,0.42022305627652934,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Ljung-Box,lag 20,no autocorrelation up to lag m,12.72574008793685,0.8523103597217021,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Ljung-Box on e²,lag 10,no autocorrelation of squares,4.427338441185775,0.926017088097374,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Ljung-Box on |e|,lag 10,no autocorrelation of absolute values,12.626315851892427,0.24532161378013775,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",Jarque-Bera,,"normal residuals (skew 0, kurtosis 3)",44.239697517867,2.47441046331508e-10,reject H0
+CONVERTS,"ARIMA(0,1,1)",Shapiro-Wilk,,normal residuals,0.9923425463418515,1.791223765083732e-05,reject H0
+CONVERTS,"ARIMA(0,1,1)",ARCH-LM,lag 5,no ARCH effect (constant conditional variance),3.3436904108452863,0.64715962978792,H0 not rejected
+CONVERTS,"ARIMA(0,1,1)",ARCH-LM,lag 10,no ARCH effect (constant conditional variance),4.325073693267082,0.9314931409344223,H0 not rejected
+PURE,"ARIMA(0,1,0)",Ljung-Box,lag 5,no autocorrelation up to lag m,6.047326810898913,0.3016410207027302,H0 not rejected
+PURE,"ARIMA(0,1,0)",Ljung-Box,lag 10,no autocorrelation up to lag m,13.945570657219752,0.17548880822311125,H0 not rejected
+PURE,"ARIMA(0,1,0)",Ljung-Box,lag 20,no autocorrelation up to lag m,20.46274213188912,0.42933774536579156,H0 not rejected
+PURE,"ARIMA(0,1,0)",Ljung-Box on e²,lag 10,no autocorrelation of squares,29.384949003199907,0.0010791660274661805,reject H0
+PURE,"ARIMA(0,1,0)",Ljung-Box on |e|,lag 10,no autocorrelation of absolute values,29.635360172489065,0.0009824996911395364,reject H0
+PURE,"ARIMA(0,1,0)",Jarque-Bera,,"normal residuals (skew 0, kurtosis 3)",28.999043631216125,5.045888914195774e-07,reject H0
+PURE,"ARIMA(0,1,0)",Shapiro-Wilk,,normal residuals,0.9924573934096005,2.1080045736955633e-05,reject H0
+PURE,"ARIMA(0,1,0)",ARCH-LM,lag 5,no ARCH effect (constant conditional variance),16.424280761442596,0.005731565676761075,reject H0
+PURE,"ARIMA(0,1,0)",ARCH-LM,lag 10,no ARCH effect (constant conditional variance),25.34560261726119,0.004727524047027175,reject H0
+PURE,"ARIMA(0,1,1)",Ljung-Box,lag 5,no autocorrelation up to lag m,4.366222239613897,0.3587060379506133,H0 not rejected
+PURE,"ARIMA(0,1,1)",Ljung-Box,lag 10,no autocorrelation up to lag m,12.357289462217524,0.1939081262121447,H0 not rejected
+PURE,"ARIMA(0,1,1)",Ljung-Box,lag 20,no autocorrelation up to lag m,18.714736836833914,0.47526843759662696,H0 not rejected
+PURE,"ARIMA(0,1,1)",Ljung-Box on e²,lag 10,no autocorrelation of squares,29.14896809657855,0.0011786870939485823,reject H0
+PURE,"ARIMA(0,1,1)",Ljung-Box on |e|,lag 10,no autocorrelation of absolute values,28.168957805447704,0.001696135260754401,reject H0
+PURE,"ARIMA(0,1,1)",Jarque-Bera,,"normal residuals (skew 0, kurtosis 3)",28.877919261411964,5.360922241440517e-07,reject H0
+PURE,"ARIMA(0,1,1)",Shapiro-Wilk,,normal residuals,0.9924939288538301,2.220605278715214e-05,reject H0
+PURE,"ARIMA(0,1,1)",ARCH-LM,lag 5,no ARCH effect (constant conditional variance),15.613322522343289,0.00803930724253889,reject H0
+PURE,"ARIMA(0,1,1)",ARCH-LM,lag 10,no ARCH effect (constant conditional variance),25.184719092280258,0.005006155664119873,reject H0

@@ -1,0 +1,5 @@
+series,setting,order,constant/drift,AIC,BIC
+CONVERTS,d = 1 imposed,"(0, 1, 0)",False,-2955.5912133821485,-2950.5872392454257
+CONVERTS,d chosen by auto_arima,"(5, 2, 1)",True,-2908.5785363192854,-2868.5540126489936
+PURE,d = 1 imposed,"(0, 1, 0)",False,-3106.2025676589587,-3101.198593522236
+PURE,d chosen by auto_arima,"(0, 1, 0)",False,-3106.2025676589587,-3101.198593522236

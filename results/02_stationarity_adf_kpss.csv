@@ -1,0 +1,21 @@
+series,form,regression,adf_stat,adf_p,adf_lags,kpss_stat,kpss_p,kpss_lags,adf_rejects_unit_root,kpss_rejects_stationarity,verdict
+CONVERTS,level (log price),ct,-2.9772082209702333,0.13856493225150168,0,0.713532139772811,0.01,20,False,True,non-stationary
+CONVERTS,difference (log return),c,-33.652811769628016,0.0,0,0.27919963107614254,0.1,1,True,False,stationary
+PURE,level (log price),ct,-3.2233271441491675,0.07985288904721338,0,0.290185976270081,0.01,20,False,True,non-stationary
+PURE,difference (log return),c,-33.951744495128096,0.0,0,0.09793869654046938,0.1,2,True,False,stationary
+BTC,level (log price),ct,-2.065447281761323,0.5653826932974676,0,0.6049023079573459,0.01,20,False,True,non-stationary
+BTC,difference (log return),c,-35.44475760530006,0.0,0,0.19860029050383662,0.1,1,True,False,stationary
+NVDA,level (log price),ct,-1.9916499109825965,0.6059750191793396,3,0.6099684961204165,0.01,20,False,True,non-stationary
+NVDA,difference (log return),c,-21.548359465329835,0.0,2,0.18332521120842699,0.1,9,True,False,stationary
+IREN,level (log price),ct,-2.5181901805133635,0.3189283352884599,0,0.7767765921306894,0.01,20,False,True,non-stationary
+IREN,difference (log return),c,-34.58667952904305,0.0,0,0.17240377440658028,0.1,3,True,False,stationary
+CIFR,level (log price),ct,-3.019933032223325,0.12659317329116387,5,0.45448178837719666,0.01,20,False,True,non-stationary
+CIFR,difference (log return),c,-16.918340560492727,9.984281067528953e-30,4,0.09928017336543879,0.1,2,True,False,stationary
+WULF,level (log price),ct,-3.5192760326165162,0.0373730010573012,0,0.7547677176097483,0.01,20,True,True,ambiguous (tests disagree)
+WULF,difference (log return),c,-35.01344456173384,0.0,0,0.4531792474988646,0.054233082974627325,6,True,False,stationary
+MARA,level (log price),ct,-2.971139436201524,0.14032931243627966,0,0.42021413120839596,0.01,20,False,True,non-stationary
+MARA,difference (log return),c,-34.3128461270737,0.0,0,0.08291394624379847,0.1,2,True,False,stationary
+CLSK,level (log price),ct,-2.7400795506581686,0.21982078269650512,1,0.3864031345023251,0.01,20,False,True,non-stationary
+CLSK,difference (log return),c,-33.24084974172147,0.0,0,0.10386261870910822,0.1,0,True,False,stationary
+RIOT,level (log price),ct,-3.5533025881468294,0.03402401770944838,1,0.31929976133780125,0.01,20,True,True,ambiguous (tests disagree)
+RIOT,difference (log return),c,-33.82514444876235,0.0,0,0.12202424850501904,0.1,0,True,False,stationary

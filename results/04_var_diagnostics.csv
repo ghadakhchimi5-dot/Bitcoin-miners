@@ -1,0 +1,22 @@
+period,test,parameter,H0,statistic,p_value,conclusion (5%)
+full,stability,max |eigenvalue| of the companion matrix,—,0.08520165535143887,,stable (< 1)
+full,adjusted Portmanteau,lag 10,no joint residual autocorrelation,132.88746218868937,0.7366014531679693,H0 not rejected
+full,multivariate Jarque-Bera,,normal residuals,3386.900667137423,0.0,reject H0
+full,ARCH-LM equation BTC,lag 5,no ARCH effect,15.047052279136025,0.010163171462571919,reject H0
+full,ARCH-LM equation NVDA,lag 5,no ARCH effect,11.77999493438703,0.03792993182967362,reject H0
+full,ARCH-LM equation CONVERTS,lag 5,no ARCH effect,4.570623545072436,0.4704902155773578,H0 not rejected
+full,ARCH-LM equation PURE,lag 5,no ARCH effect,16.92290660605941,0.004648351349730164,reject H0
+pre-pivot,stability,max |eigenvalue| of the companion matrix,—,0.08565978381726132,,stable (< 1)
+pre-pivot,adjusted Portmanteau,lag 10,no joint residual autocorrelation,139.19952228973713,0.5974181471449731,H0 not rejected
+pre-pivot,multivariate Jarque-Bera,,normal residuals,1861.5801428863167,0.0,reject H0
+pre-pivot,ARCH-LM equation BTC,lag 5,no ARCH effect,6.005858973609418,0.3056492322737699,H0 not rejected
+pre-pivot,ARCH-LM equation NVDA,lag 5,no ARCH effect,3.5264602555954783,0.6193876917503144,H0 not rejected
+pre-pivot,ARCH-LM equation CONVERTS,lag 5,no ARCH effect,7.439482729953219,0.18995264031493517,H0 not rejected
+pre-pivot,ARCH-LM equation PURE,lag 5,no ARCH effect,17.582542807381884,0.0035177721191405028,reject H0
+post-pivot,stability,max |eigenvalue| of the companion matrix,—,0.13717130284048432,,stable (< 1)
+post-pivot,adjusted Portmanteau,lag 10,no joint residual autocorrelation,130.11139618205004,0.7900717949158962,H0 not rejected
+post-pivot,multivariate Jarque-Bera,,normal residuals,1205.7078651770214,5.604175235877749e-255,reject H0
+post-pivot,ARCH-LM equation BTC,lag 5,no ARCH effect,40.516151609525,1.1749900397097546e-07,reject H0
+post-pivot,ARCH-LM equation NVDA,lag 5,no ARCH effect,12.684777534873463,0.026518792603707438,reject H0
+post-pivot,ARCH-LM equation CONVERTS,lag 5,no ARCH effect,7.099577762307794,0.21333930500016704,H0 not rejected
+post-pivot,ARCH-LM equation PURE,lag 5,no ARCH effect,19.259503063264372,0.001719492658603656,reject H0

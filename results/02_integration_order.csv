@@ -1,0 +1,11 @@
+series,level,difference,chosen d
+CONVERTS,non-stationary,stationary,1
+PURE,non-stationary,stationary,1
+BTC,non-stationary,stationary,1
+NVDA,non-stationary,stationary,1
+IREN,non-stationary,stationary,1
+CIFR,non-stationary,stationary,1
+WULF,ambiguous (tests disagree),stationary,1
+MARA,non-stationary,stationary,1
+CLSK,non-stationary,stationary,1
+RIOT,ambiguous (tests disagree),stationary,1

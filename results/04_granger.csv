@@ -1,0 +1,25 @@
+cause,effect,H0,F,df,p_value,conclusion (5%),period
+BTC,CONVERTS,BTC does not Granger-cause CONVERTS,0.3571572907567707,"(1, 4872)",0.5501170332737154,H0 not rejected,full
+CONVERTS,BTC,CONVERTS does not Granger-cause BTC,1.7882315054868467,"(1, 4872)",0.18120421316146992,H0 not rejected,full
+BTC,PURE,BTC does not Granger-cause PURE,0.46718527060514203,"(1, 4872)",0.49431743763883346,H0 not rejected,full
+PURE,BTC,PURE does not Granger-cause BTC,2.5086013018075217,"(1, 4872)",0.11329129070037885,H0 not rejected,full
+NVDA,CONVERTS,NVDA does not Granger-cause CONVERTS,0.006186061843514557,"(1, 4872)",0.9373130361626986,H0 not rejected,full
+CONVERTS,NVDA,CONVERTS does not Granger-cause NVDA,4.200177455444901,"(1, 4872)",0.04047318384783826,reject H0,full
+NVDA,PURE,NVDA does not Granger-cause PURE,2.3678963549082614,"(1, 4872)",0.12391879118416244,H0 not rejected,full
+PURE,NVDA,PURE does not Granger-cause NVDA,2.4435021287281935,"(1, 4872)",0.11807743601203072,H0 not rejected,full
+BTC,CONVERTS,BTC does not Granger-cause CONVERTS,0.08515077390026286,"(1, 3084)",0.7704545416174732,H0 not rejected,pre-pivot
+CONVERTS,BTC,CONVERTS does not Granger-cause BTC,1.465231010870764,"(1, 3084)",0.22619240419019163,H0 not rejected,pre-pivot
+BTC,PURE,BTC does not Granger-cause PURE,0.009467196486521686,"(1, 3084)",0.9224948602004556,H0 not rejected,pre-pivot
+PURE,BTC,PURE does not Granger-cause BTC,4.451095218036709,"(1, 3084)",0.034959232391739176,reject H0,pre-pivot
+NVDA,CONVERTS,NVDA does not Granger-cause CONVERTS,0.5237163896253313,"(1, 3084)",0.46931555373187045,H0 not rejected,pre-pivot
+CONVERTS,NVDA,CONVERTS does not Granger-cause NVDA,3.1117380769030865,"(1, 3084)",0.07782896164143982,H0 not rejected,pre-pivot
+NVDA,PURE,NVDA does not Granger-cause PURE,0.5853317391934971,"(1, 3084)",0.4442885454594437,H0 not rejected,pre-pivot
+PURE,NVDA,PURE does not Granger-cause NVDA,3.375262955214283,"(1, 3084)",0.06627818242638511,H0 not rejected,pre-pivot
+BTC,CONVERTS,BTC does not Granger-cause CONVERTS,2.8652792563321126,"(1, 1764)",0.09068658179594903,H0 not rejected,post-pivot
+CONVERTS,BTC,CONVERTS does not Granger-cause BTC,0.08695340906573837,"(1, 1764)",0.7681212931759989,H0 not rejected,post-pivot
+BTC,PURE,BTC does not Granger-cause PURE,3.2936227699870138,"(1, 1764)",0.06971918325473146,H0 not rejected,post-pivot
+PURE,BTC,PURE does not Granger-cause BTC,1.692884696455262,"(1, 1764)",0.1933910582440291,H0 not rejected,post-pivot
+NVDA,CONVERTS,NVDA does not Granger-cause CONVERTS,2.358794317140437,"(1, 1764)",0.12475777340812479,H0 not rejected,post-pivot
+CONVERTS,NVDA,CONVERTS does not Granger-cause NVDA,0.030203232964665542,"(1, 1764)",0.8620498364393099,H0 not rejected,post-pivot
+NVDA,PURE,NVDA does not Granger-cause PURE,5.854877244495197,"(1, 1764)",0.01563446375907746,reject H0,post-pivot
+PURE,NVDA,PURE does not Granger-cause NVDA,0.30669317315036704,"(1, 1764)",0.5797867002369448,H0 not rejected,post-pivot

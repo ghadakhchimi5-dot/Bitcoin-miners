@@ -1,0 +1,194 @@
+---
+title: "03 — ARIMA / SARIMA (R)"
+subtitle: "Did Bitcoin miners leave Bitcoin for AI? — Phase 3, R version"
+output:
+  html_document:
+    toc: true
+    df_print: kable
+---
+
+Packages: `forecast`, `tseries`, `FinTS`, `yaml`, `xts` (installation: `Rscript R/install_packages.R`).
+
+This notebook repeats **the same steps** as `notebooks/python/03_arima.ipynb`, on the same snapshot and the same split (dates read from `config.yaml`). It then compares the results with the files written by Python. The Python notebook must therefore be run **before** this one.
+
+```{r setup, include=FALSE}
+# Resolve the project root once so every path below is relative to it, whatever folder knitr runs in.
+ROOT <- dirname(normalizePath(knitr::current_input(dir = TRUE), winslash = "/"))
+while (!file.exists(file.path(ROOT, "config.yaml"))) ROOT <- dirname(ROOT)
+source(file.path(ROOT, "R", "load_data.R"))
+source(file.path(ROOT, "R", "arima_helpers.R"))
+knitr::opts_knit$set(root.dir = ROOT)
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.width = 10, fig.height = 6)
+cfg <- load_config(ROOT)
+set.seed(cfg$seed)  # same seed as Python; ML estimation is deterministic anyway
+RES <- file.path(ROOT, cfg$paths$results)
+FIG <- file.path(ROOT, cfg$paths$figures)
+```
+
+## 0. Data and split
+
+```{r data}
+# Same CSV and same split dates as Python, so any difference below comes from the software, not the data.
+panel <- load_panel(ROOT)
+sp <- split_panel(panel, cfg)
+stopifnot(nrow(sp$train) == cfg$split$n_train, nrow(sp$test) == cfg$split$n_test)
+y_tr <- list(CONVERTS = as.numeric(sp$train[, "CONVERTS_log_price"]),
+             PURE     = as.numeric(sp$train[, "PURE_log_price"]))
+cat("train:", nrow(sp$train), "obs |", format(start(sp$train)), "->", format(end(sp$train)),
+    "| test:", nrow(sp$test), "obs | pivot:", cfg$pivot_date, "\n")
+```
+
+## 1. Manual identification
+
+Same reading as in Python. In Phase 2, the ACF of the log price decays slowly (d = 1), and returns show no significant autocorrelation (Ljung-Box not rejected). The model proposed by hand is therefore **ARIMA(0,1,0) without drift** (a random walk). ARIMA(0,1,1) serves as a competitor.
+
+```{r acf, fig.height=3.5}
+# ACF of TRAIN returns only, to identify without looking at the test set.
+par(mfrow = c(1, 2))
+for (s in names(y_tr)) Acf(diff(y_tr[[s]]), lag.max = 30, main = paste("ACF", s, "returns (train)"))
+```
+
+## 2. Automatic search: `forecast::auto.arima`
+
+`ic = "aic"` is imposed to be comparable with `pmdarima` (R's default is AICc). The search is run once with d = 1 imposed, once with free d (`auto.arima` then chooses d with a KPSS test).
+
+```{r auto}
+# Stepwise search like pmdarima; approximation = FALSE so the likelihood is exact, as in statsmodels.
+auto_tab <- do.call(rbind, lapply(names(y_tr), function(s) {
+  a1 <- auto.arima(y_tr[[s]], d = 1, seasonal = FALSE, ic = "aic", stepwise = TRUE, approximation = FALSE)
+  a2 <- auto.arima(y_tr[[s]], seasonal = FALSE, ic = "aic", stepwise = TRUE, approximation = FALSE)
+  data.frame(series = s, setting = c("d = 1 imposed", "free d"),
+             order = c(paste(arimaorder(a1), collapse = ","), paste(arimaorder(a2), collapse = ",")),
+             drift = c("drift" %in% names(coef(a1)), "drift" %in% names(coef(a2))),
+             AIC = c(a1$aic, a2$aic), BIC = c(a1$bic, a2$bic))
+}))
+write.csv(auto_tab, file.path(RES, "03_auto_arima_r.csv"), row.names = FALSE)
+auto_tab
+cat("ndiffs (KPSS / ADF / PP) CONVERTS:", ndiffs(y_tr$CONVERTS, test = "kpss"), ndiffs(y_tr$CONVERTS, test = "adf"),
+    ndiffs(y_tr$CONVERTS, test = "pp"), "| PURE:", ndiffs(y_tr$PURE, test = "kpss"), ndiffs(y_tr$PURE, test = "adf"),
+    ndiffs(y_tr$PURE, test = "pp"), "\n")
+```
+
+## 3. Seasonality (s = 5)
+
+```{r seasonal}
+# Seasonal differencing tests (OCSB, and R's default "seas" = STL seasonal strength; Canova-Hansen would need the extra uroot package) and nested LR tests of seasonal AR / MA terms, as in Python.
+seas <- do.call(rbind, lapply(names(y_tr), function(s) {
+  yts <- ts(y_tr[[s]], frequency = 5)
+  base <- Arima(yts, order = c(0, 1, 0), method = "ML")
+  rows <- data.frame(series = s, model = "ARIMA(0,1,0)", AIC = base$aic, BIC = base$bic, LR = NA, df = 0, p_value = NA,
+                     D_ocsb = nsdiffs(yts, test = "ocsb"), D_seas = nsdiffs(yts, test = "seas"))
+  for (so in list(c(1, 0, 0), c(0, 0, 1), c(1, 0, 1))) {
+    f <- Arima(yts, order = c(0, 1, 0), seasonal = list(order = so, period = 5), method = "ML")
+    lr <- 2 * (f$loglik - base$loglik); df <- sum(so)
+    rows <- rbind(rows, data.frame(series = s, model = sprintf("SARIMA(0,1,0)(%d,%d,%d)[5]", so[1], so[2], so[3]),
+                                   AIC = f$aic, BIC = f$bic, LR = lr, df = df, p_value = pchisq(lr, df, lower.tail = FALSE),
+                                   D_ocsb = NA, D_seas = NA))
+  }
+  rows
+}))
+write.csv(seas, file.path(RES, "03_seasonal_tests_r.csv"), row.names = FALSE)
+seas
+```
+
+**Conclusion.** The seasonal differencing tests give D = 0. No seasonal term is significant at 5%: the smallest LR p-value is `r round(min(seas$p_value, na.rm = TRUE), 3)`. The BIC of the model without a seasonal term is the lowest for both series. As in Python, and in line with Phase 2 (STL, day-of-week effect), **no SARIMA is kept**.
+
+## 4. Chosen models and residual diagnostics
+
+```{r fit}
+# method = "ML" (exact likelihood) to match statsmodels; no drift, as chosen in Python.
+fits <- list()
+for (s in names(y_tr)) {
+  fits[[paste(s, "ARIMA(0,1,0)")]] <- Arima(y_tr[[s]], order = c(0, 1, 0), method = "ML")
+  fits[[paste(s, "ARIMA(0,1,1)")]] <- Arima(y_tr[[s]], order = c(0, 1, 1), method = "ML")
+}
+coefs_r <- do.call(rbind, lapply(names(fits), function(k) {
+  f <- fits[[k]]; se <- if (length(coef(f))) sqrt(diag(f$var.coef)) else numeric(0)
+  data.frame(series = sub(" .*", "", k), model = sub("^\\S+ ", "", k),
+             parameter = c(names(coef(f)), "sigma2"), estimate = c(coef(f), f$sigma2),
+             std_err = c(se, NA), loglik = f$loglik, AIC = f$aic, BIC = f$bic, row.names = NULL)
+}))
+write.csv(coefs_r, file.path(RES, "03_arima_r_coefs.csv"), row.names = FALSE)
+coefs_r
+```
+
+```{r diag}
+# Same tests as Python on the chosen model; first residual dropped (diffuse start of a d = 1 model).
+diag_r <- do.call(rbind, lapply(names(y_tr), function(s) {
+  e <- as.numeric(residuals(fits[[paste(s, "ARIMA(0,1,0)")]]))[-1]
+  cbind(series = s, resid_diagnostics(e, fitdf = 0))
+}))
+write.csv(diag_r, file.path(RES, "03_residual_diagnostics_r.csv"), row.names = FALSE)
+diag_r[, c("series", "test", "parameter", "statistic", "p_value", "conclusion")]
+```
+
+```{r residplot, fig.height=6}
+# checkresiduals() = time plot + ACF + histogram (and a Ljung-Box line); saved for the report.
+png(file.path(FIG, "fig_03_06_residuals_converts_r.png"), width = 1600, height = 1000, res = 160)
+checkresiduals(fits[["CONVERTS ARIMA(0,1,0)"]], test = FALSE)
+invisible(dev.off())
+checkresiduals(fits[["CONVERTS ARIMA(0,1,0)"]], test = FALSE)
+qqnorm(as.numeric(residuals(fits[["CONVERTS ARIMA(0,1,0)"]]))[-1], main = "CONVERTS ARIMA(0,1,0): normal QQ-plot")
+qqline(as.numeric(residuals(fits[["CONVERTS ARIMA(0,1,0)"]]))[-1])
+```
+
+**Reading.** R reproduces the Python conclusions:
+
+* **Ljung-Box**: no autocorrelation of the residuals for either series. For CONVERTS, the p-values at lags 5 / 10 / 20 are `r paste(round(diag_r$p_value[diag_r$series == "CONVERTS" & diag_r$test == "Ljung-Box"], 3), collapse = " / ")`.
+* **Normality rejected** (Jarque-Bera and Shapiro-Wilk, p < 0.001): the tails are fatter than the normal distribution's.
+* **ARCH-LM**:
+  * CONVERTS: not rejected (p = `r round(diag_r$p_value[diag_r$series == "CONVERTS" & diag_r$test == "ARCH-LM"][1], 3)` at lag 5);
+  * PURE: rejected (p = `r signif(diag_r$p_value[diag_r$series == "PURE" & diag_r$test == "ARCH-LM"][1], 3)` at lag 5).
+
+## 5. Forecast from the first origin (cross-check)
+
+The rolling-origin forecasts in the common file `results/forecasts_arima.csv` are produced by Python. Here, R recomputes the forecast **from the first origin** (the last training day), for h = 1 to 10, and compares it with Python's.
+
+```{r forecast}
+# Forecast 10 steps from the last train day, map back to index points with exp(), and compare with Python's first origin.
+py_fc <- read.csv(file.path(RES, "forecasts_arima.csv"))
+origin0 <- cfg$split$train_end
+cmp <- do.call(rbind, lapply(list(c("CONVERTS", "rw", "ARIMA(0,1,0)"), c("CONVERTS", "arima_011", "ARIMA(0,1,1)"),
+                                  c("PURE", "rw", "ARIMA(0,1,0)"), c("PURE", "arima_011", "ARIMA(0,1,1)")), function(k) {
+  fc <- forecast(fits[[paste(k[1], k[3])]], h = 10, level = 95)
+  p <- py_fc[py_fc$series == k[1] & py_fc$model == k[2] & py_fc$origin == origin0, ]
+  p <- p[order(p$horizon), ]
+  data.frame(series = k[1], model = k[2], horizon = 1:10,
+             y_pred_R = exp(as.numeric(fc$mean)), y_pred_Py = p$y_pred,
+             lower_R = exp(as.numeric(fc$lower)), lower_Py = p$lower,
+             upper_R = exp(as.numeric(fc$upper)), upper_Py = p$upper)
+}))
+cmp$reldiff_pred <- abs(cmp$y_pred_R / cmp$y_pred_Py - 1)
+cmp$reldiff_upper <- abs(cmp$upper_R / cmp$upper_Py - 1)
+write.csv(cmp, file.path(RES, "forecasts_arima_r_first_origin.csv"), row.names = FALSE)
+cmp[cmp$horizon %in% c(1, 5, 10), ]
+```
+
+## 6. Python / R comparison
+
+```{r compare}
+# Line-by-line comparison of the estimates written by both languages.
+py <- read.csv(file.path(RES, "03_arima_python_coefs.csv"), check.names = FALSE)
+names(py)[1:3] <- c("series", "model", "parameter")
+py$parameter[py$parameter == "ma.L1"] <- "ma1"
+m <- merge(py[, c("series", "model", "parameter", "estimate", "loglik", "AIC")],
+           coefs_r[, c("series", "model", "parameter", "estimate", "loglik", "AIC")],
+           by = c("series", "model", "parameter"), suffixes = c("_py", "_r"))
+m$reldiff_estimate <- abs(m$estimate_r / m$estimate_py - 1)
+m$loglik_diff <- m$loglik_r - m$loglik_py
+write.csv(m, file.path(RES, "03_python_vs_r.csv"), row.names = FALSE)
+m
+```
+
+**Conclusion of the comparison.**
+
+* **Same orders.** `auto.arima` with d = 1 gives `r paste0("(", auto_tab$order[auto_tab$series == "CONVERTS" & auto_tab$setting == "d = 1 imposed"], ")")` for CONVERTS and `r paste0("(", auto_tab$order[auto_tab$series == "PURE" & auto_tab$setting == "d = 1 imposed"], ")")` for PURE, without drift, like `pmdarima`.
+* **Free d.** When d is left free, R chooses `r paste0("(", auto_tab$order[auto_tab$series == "CONVERTS" & auto_tab$setting == "free d"], ")")` for CONVERTS (Python: (5,2,1)). The difference comes from the KPSS test used by default to choose d (see the Python notebook).
+* **Same coefficients.** The maximum relative difference on the coefficients and on σ² is `r sprintf("%.2g", max(m$reldiff_estimate))`. The maximum log-likelihood difference is `r sprintf("%.2g", max(abs(m$loglik_diff)))`.
+* **Same forecasts.** The maximum relative difference on the forecast from the first origin is `r sprintf("%.2g", max(cmp$reldiff_pred))`, and `r sprintf("%.2g", max(cmp$reldiff_upper))` on the upper bound of the 95% interval.
+
+The two implementations therefore reach the same model and the same conclusions. The small numerical differences come from the optimiser and from how the likelihood of an integrated model is initialised (diffuse Kalman filter in statsmodels, prior differencing in R).
+
+```{r session}
+sessionInfo()
+```

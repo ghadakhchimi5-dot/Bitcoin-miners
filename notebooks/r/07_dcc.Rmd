@@ -1,0 +1,87 @@
+---
+title: "07 — DCC-GARCH (R, rmgarch): checking the Python implementation"
+subtitle: "Did Bitcoin miners leave Bitcoin for AI? — Phase 7, extension"
+output:
+  html_document:
+    toc: true
+    df_print: kable
+---
+
+Packages: `rmgarch`, `rugarch`, `yaml`, `xts`.
+
+The DCC(1,1)-GARCH of `notebooks/python/07_evaluation.ipynb` (section 5.2) is implemented by hand in `src/dcc.py`. This notebook re-estimates the **same pairs** with the R reference, `rmgarch::dccfit`, and compares the parameters and the correlation paths. Run the Python notebook **before** this one.
+
+```{r setup, include=FALSE}
+# Resolve the project root once so every path below is relative to it, whatever folder knitr runs in.
+ROOT <- dirname(normalizePath(knitr::current_input(dir = TRUE), winslash = "/"))
+while (!file.exists(file.path(ROOT, "config.yaml"))) ROOT <- dirname(ROOT)
+source(file.path(ROOT, "R", "load_data.R"))
+suppressPackageStartupMessages({library(rugarch); library(rmgarch)})
+knitr::opts_knit$set(root.dir = ROOT)
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.width = 10, fig.height = 5)
+cfg <- load_config(ROOT)
+set.seed(cfg$seed)
+RES <- file.path(ROOT, cfg$paths$results)
+fmt <- function(x) sprintf("%.2g", x)
+```
+
+```{r data}
+# Same percent returns and same marginal model as Python: constant mean + GARCH(1,1) with Student-t errors.
+panel <- load_panel(ROOT)
+S <- c("CONVERTS", "PURE", "BTC", "NVDA")
+r <- 100 * na.omit(panel[, paste0(S, "_log_return")]); colnames(r) <- S
+piv <- as.Date(cfg$pivot_date)
+uspec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                    mean.model = list(armaOrder = c(0, 0), include.mean = TRUE), distribution.model = "std")
+dspec <- dccspec(uspec = multispec(replicate(2, uspec)), dccOrder = c(1, 1), distribution = "mvnorm")
+```
+
+```{r fit}
+# DCC(1,1) with a multivariate-normal correlation likelihood (two-step QML, like src/dcc.py) for the 4 pairs.
+py_par <- read.csv(file.path(RES, "07_dcc_params.csv"), check.names = FALSE)
+py_rho <- read.csv(file.path(RES, "07_dcc_corr.csv"), check.names = FALSE)
+pairs <- list(c("CONVERTS", "BTC"), c("CONVERTS", "NVDA"), c("PURE", "BTC"), c("PURE", "NVDA"))
+rows <- list(); rhos <- list()
+for (p in pairs) {
+  lab <- paste0(p[1], "–", p[2])
+  f <- dccfit(dspec, data = r[, p], solver = "solnp")
+  cf <- coef(f)
+  rho <- rcor(f)[1, 2, ]
+  rhos[[lab]] <- rho
+  d <- zoo::index(r)
+  pr <- py_rho[[lab]]
+  rows[[lab]] <- data.frame(pair = lab, a_R = cf["[Joint]dcca1"], b_R = cf["[Joint]dccb1"],
+                            a_Py = py_par$a[py_par$pair == lab], b_Py = py_par$b[py_par$pair == lab],
+                            mean_pre_R = mean(rho[d < piv]), mean_post_R = mean(rho[d >= piv]),
+                            mean_pre_Py = py_par[["mean DCC corr pre-pivot"]][py_par$pair == lab],
+                            mean_post_Py = py_par[["mean DCC corr post-pivot"]][py_par$pair == lab],
+                            path_corr = cor(rho, pr), mean_abs_diff = mean(abs(rho - pr)), row.names = NULL)
+}
+cmp <- do.call(rbind, rows)
+write.csv(cmp, file.path(RES, "07_dcc_r_vs_python.csv"), row.names = FALSE)
+cmp
+```
+
+```{r plot}
+# Python (solid) vs R (dotted) DCC correlation paths for the two CONVERTS pairs.
+d <- as.Date(py_rho[[1]])
+plot(d, py_rho[["CONVERTS–NVDA"]], type = "l", col = "#e8a33d", ylim = c(0, 0.8), xlab = "", ylab = "DCC correlation",
+     main = "CONVERTS: DCC correlation, Python (solid) vs rmgarch (dotted)")
+lines(d, rhos[["CONVERTS–NVDA"]], col = "#e8a33d", lty = 3, lwd = 2)
+lines(d, py_rho[["CONVERTS–BTC"]], col = "#1baf7a")
+lines(d, rhos[["CONVERTS–BTC"]], col = "#1baf7a", lty = 3, lwd = 2)
+abline(v = piv, lwd = 2)
+legend("bottomleft", c("CONVERTS–NVDA", "CONVERTS–BTC"), col = c("#e8a33d", "#1baf7a"), lty = 1, bty = "n")
+```
+
+## Conclusion of the check
+
+* **Parameters.** Maximum difference on a: `r fmt(max(abs(cmp$a_R - cmp$a_Py)))`; on b: `r fmt(max(abs(cmp$b_R - cmp$b_Py)))`.
+* **Correlation paths.** The correlation between the R and Python paths is at least `r round(min(cmp$path_corr), 3)`, with a mean absolute difference of at most `r fmt(max(cmp$mean_abs_diff))`.
+* **Key result found in both languages.** For CONVERTS–NVDA, the mean DCC correlation goes from `r round(cmp$mean_pre_R[cmp$pair == "CONVERTS–NVDA"], 3)` before the pivot to `r round(cmp$mean_post_R[cmp$pair == "CONVERTS–NVDA"], 3)` after in R, vs `r round(cmp$mean_pre_Py[cmp$pair == "CONVERTS–NVDA"], 3)` → `r round(cmp$mean_post_Py[cmp$pair == "CONVERTS–NVDA"], 3)` in Python.
+
+The remaining differences come from the marginal models: `rugarch` and `arch` do not reach exactly the same optimum (see Phase 5), so the standardised residuals differ slightly.
+
+```{r session}
+sessionInfo()
+```

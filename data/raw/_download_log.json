@@ -1,0 +1,66 @@
+{
+  "IREN": {
+    "file": "IREN.csv",
+    "downloaded_utc": "2026-11-09 19:36:08",
+    "yfinance": "1.8.0",
+    "rows": 1243,
+    "first": "2021-11-17",
+    "last": "2026-10-30"
+  },
+  "CIFR": {
+    "file": "CIFR.csv",
+    "downloaded_utc": "2026-11-09 19:36:08",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  },
+  "WULF": {
+    "file": "WULF.csv",
+    "downloaded_utc": "2026-11-09 19:36:09",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  },
+  "MARA": {
+    "file": "MARA.csv",
+    "downloaded_utc": "2026-11-09 19:36:09",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  },
+  "CLSK": {
+    "file": "CLSK.csv",
+    "downloaded_utc": "2026-11-09 19:36:10",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  },
+  "RIOT": {
+    "file": "RIOT.csv",
+    "downloaded_utc": "2026-11-09 19:36:10",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  },
+  "BTC-USD": {
+    "file": "BTC.csv",
+    "downloaded_utc": "2026-11-09 19:36:11",
+    "yfinance": "1.8.0",
+    "rows": 2130,
+    "first": "2021-01-01",
+    "last": "2026-10-31"
+  },
+  "NVDA": {
+    "file": "NVDA.csv",
+    "downloaded_utc": "2026-11-09 19:36:11",
+    "yfinance": "1.8.0",
+    "rows": 1464,
+    "first": "2021-01-04",
+    "last": "2026-10-30"
+  }
+}

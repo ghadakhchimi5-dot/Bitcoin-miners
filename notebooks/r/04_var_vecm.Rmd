@@ -1,0 +1,182 @@
+---
+title: "04 — VAR, Granger, Johansen, VECM (R)"
+subtitle: "Did Bitcoin miners leave Bitcoin for AI? — Phase 4, R version"
+output:
+  html_document:
+    toc: true
+    df_print: kable
+---
+
+Packages: `vars`, `urca`, `yaml`, `xts` (installation: `Rscript R/install_packages.R`).
+
+This notebook repeats the steps of `notebooks/python/04_var_vecm.ipynb` with the reference R packages, `vars` and `urca`, then compares each result with the files written by Python. The Python notebook must therefore be run **before** this one.
+
+```{r setup, include=FALSE}
+# Resolve the project root once so every path below is relative to it, whatever folder knitr runs in.
+ROOT <- dirname(normalizePath(knitr::current_input(dir = TRUE), winslash = "/"))
+while (!file.exists(file.path(ROOT, "config.yaml"))) ROOT <- dirname(ROOT)
+source(file.path(ROOT, "R", "load_data.R"))
+source(file.path(ROOT, "R", "var_helpers.R"))
+knitr::opts_knit$set(root.dir = ROOT)
+knitr::opts_chunk$set(echo = TRUE, comment = "", fig.width = 10, fig.height = 6)
+cfg <- load_config(ROOT)
+set.seed(cfg$seed)  # same seed as Python; nothing below is random
+RES <- file.path(ROOT, cfg$paths$results)
+fmt <- function(x) sprintf("%.2g", x)
+```
+
+## 0. Data
+
+```{r data}
+# Same CSV and same pivot as Python; returns for the VAR (I(0)), log prices for cointegration (I(1)).
+panel <- load_panel(ROOT)
+V <- c("BTC", "NVDA", "CONVERTS", "PURE")   # same column order = same Cholesky order as Python
+ret <- na.omit(panel[, paste0(V, "_log_return")]); colnames(ret) <- V
+lp <- panel[, paste0(V, "_log_price")]; colnames(lp) <- V
+PER <- period_rows(ret, cfg$pivot_date)
+LPER <- period_rows(lp, cfg$pivot_date)
+sapply(PER, nrow)
+```
+
+## 1. VAR on returns
+
+```{r lags}
+# Information criteria for p = 1..10 (vars::VARselect starts at p = 1, unlike statsmodels which also reports p = 0).
+sel <- t(sapply(PER, function(x) VARselect(zoo::coredata(x), lag.max = 10, type = "const")$selection))
+sel
+```
+
+`VARselect` does not offer p = 0. Among p ≥ 1, it chooses the smallest possible order. Python, which also tests p = 0, chooses 0 with all four criteria in the three periods. The two therefore agree: no dynamics beyond one day. We estimate a **VAR(1)**, the minimum order that allows testing Granger causality.
+
+```{r var}
+# VAR(1) with a constant in each period, then stability and the three residual tests of the brief.
+vars_r <- lapply(PER, function(x) VAR(zoo::coredata(x), p = 1, type = "const"))
+diag_r <- do.call(rbind, lapply(names(vars_r), function(n) {
+  v <- vars_r[[n]]
+  pt <- serial.test(v, lags.pt = 10, type = "PT.adjusted")$serial
+  jb <- normality.test(v, multivariate.only = TRUE)$jb.mul$JB
+  ar <- arch.test(v, lags.multi = 5, multivariate.only = TRUE)$arch.mul
+  data.frame(period = n, max_root = max(roots(v)),
+             portmanteau_stat = unname(pt$statistic), portmanteau_p = pt$p.value,
+             JB_mult_stat = unname(jb$statistic), JB_mult_p = jb$p.value,
+             ARCH_mult_stat = unname(ar$statistic), ARCH_mult_p = ar$p.value)
+}))
+write.csv(diag_r, file.path(RES, "04_var_diagnostics_r.csv"), row.names = FALSE)
+diag_r
+```
+
+**Reading.**
+
+* **Stability**: the three VARs are stable (largest root `r fmt(max(diag_r$max_root))` < 1).
+* **Adjusted Portmanteau** (H0: no residual autocorrelation): not rejected, p = `r paste(round(diag_r$portmanteau_p, 3), collapse = " / ")`.
+* **Multivariate normality** (Jarque-Bera): rejected everywhere (p < 0.001).
+* **Multivariate ARCH** (`vars::arch.test`, which Python does not have: Python runs one ARCH-LM per equation): p = `r paste(signif(diag_r$ARCH_mult_p, 3), collapse = " / ")`. Conditional heteroscedasticity is present at system level, which supports Phase 5.
+
+## 2. Granger causality
+
+```{r granger}
+# 8 directed pairs x 3 periods, then side by side with Python's p-values.
+pairs <- expand.grid(ref = c("BTC", "NVDA"), grp = c("CONVERTS", "PURE"), stringsAsFactors = FALSE)
+gr_r <- do.call(rbind, lapply(names(PER), function(n) {
+  x <- zoo::coredata(PER[[n]])
+  do.call(rbind, lapply(seq_len(nrow(pairs)), function(i) {
+    a <- pairs$ref[i]; b <- pairs$grp[i]
+    rbind(data.frame(period = n, cause = a, effect = b, t(granger_pair(x, a, b))),
+          data.frame(period = n, cause = b, effect = a, t(granger_pair(x, b, a))))
+  }))
+}))
+py_gr <- read.csv(file.path(RES, "04_granger.csv"), check.names = FALSE)
+gcmp <- merge(gr_r, py_gr[, c("period", "cause", "effect", "p_value")], by = c("period", "cause", "effect"), suffixes = c("_R", "_Py"))
+write.csv(gcmp, file.path(RES, "04_granger_r_vs_python.csv"), row.names = FALSE)
+gcmp[order(gcmp$period, gcmp$cause), ]
+```
+
+* **Same conclusion at 5% in both languages** for `r sum((gcmp$p_value_R < 0.05) == (gcmp$p_value_Py < 0.05))` tests out of `r nrow(gcmp)`.
+* **Maximum p-value difference**: `r fmt(max(abs(gcmp$p_value_R - gcmp$p_value_Py)))`. It comes from the denominator degrees of freedom: single-equation F test in R, system-wide Wald test in statsmodels.
+
+## 3. Impulse responses (same-day effect)
+
+```{r irf}
+# Orthogonalised IRF at h = 0 (Cholesky, same order as Python) for BTC and NVDA shocks on both groups.
+irf_r <- do.call(rbind, lapply(names(vars_r), function(n) {
+  ir <- irf(vars_r[[n]], impulse = c("BTC", "NVDA"), response = c("CONVERTS", "PURE"), n.ahead = 10, ortho = TRUE, boot = FALSE)$irf
+  do.call(rbind, lapply(names(ir), function(s) data.frame(period = n, shock = s, response = c("CONVERTS", "PURE"), irf_h0 = ir[[s]][1, ])))
+}))
+py_irf <- read.csv(file.path(RES, "04_irf.csv"), check.names = FALSE)
+py_irf <- py_irf[py_irf$h == 0, ]
+icmp <- merge(irf_r, py_irf[, c("period", "shock", "response", "irf")], by = c("period", "shock", "response"))
+icmp$reldiff <- abs(icmp$irf_h0 / icmp$irf - 1)
+write.csv(icmp, file.path(RES, "04_irf_r_vs_python.csv"), row.names = FALSE)
+icmp
+```
+
+Maximum relative difference on the same-day effect: `r fmt(max(icmp$reldiff))`. In R, the response of CONVERTS to an NVDA shock goes from `r round(irf_r$irf_h0[irf_r$period == "pre-pivot" & irf_r$shock == "NVDA" & irf_r$response == "CONVERTS"], 4)` before the pivot to `r round(irf_r$irf_h0[irf_r$period == "post-pivot" & irf_r$shock == "NVDA" & irf_r$response == "CONVERTS"], 4)` after, as in Python.
+
+## 4. Cointegration (Johansen and Engle-Granger)
+
+```{r coint}
+# Same pairs, periods and lag choice (k_ar_diff read from Python's table) so only the software differs.
+py_c <- read.csv(file.path(RES, "04_cointegration.csv"), check.names = FALSE)
+PAIRS <- list(c("CONVERTS", "BTC"), c("PURE", "BTC"), c("CONVERTS", "NVDA"), c("PURE", "NVDA"))
+co_r <- do.call(rbind, lapply(PAIRS, function(pr) do.call(rbind, lapply(names(LPER), function(n) {
+  y <- zoo::coredata(LPER[[n]][, pr]); lab <- paste0(pr[1], "–", pr[2])
+  k <- py_c$k_ar_diff[py_c$pair == lab & py_c$period == n]
+  cbind(data.frame(pair = lab, period = n, k_ar_diff = k), johansen_pair(y, k), EG_stat = eg_stat(y[, 1], y[, 2]))
+}))))
+ccmp <- merge(co_r, py_c[, c("pair", "period", "trace_r0", "maxeig_r0", "rank_trace", "EG_stat", "EG_p")],
+              by = c("pair", "period"), suffixes = c("_R", "_Py"))
+write.csv(ccmp, file.path(RES, "04_cointegration_r_vs_python.csv"), row.names = FALSE)
+ccmp[, c("pair", "period", "trace_r0_R", "trace_r0_Py", "cv95_trace_r0", "rank_trace_R", "rank_trace_Py",
+         "maxeig_r0_R", "maxeig_r0_Py", "rank_maxeig", "EG_stat_R", "EG_stat_Py", "EG_p")]
+```
+
+**Comparison.**
+
+* **Trace statistics.** Maximum R / Python difference: `r fmt(max(abs(ccmp$trace_r0_R - ccmp$trace_r0_Py)))`.
+* **Critical values.** They differ clearly. For r = 0 at the 5% level, urca gives `r round(co_r$cv95_trace_r0[1], 2)` and statsmodels `r round(py_c$cv95_trace_r0[1], 2)`: the two packages do not use the same table of critical values for this model (unrestricted constant).
+* **Ranks.** They coincide in `r sum(ccmp$rank_trace_R == ccmp$rank_trace_Py)` cases out of `r nrow(ccmp)`. The only pair where the two languages differ is **CONVERTS–NVDA**, on the full sample and before the pivot. The trace statistic is identical there (`r round(ccmp$trace_r0_R[ccmp$pair == "CONVERTS–NVDA" & ccmp$period == "full"], 2)`), but it exceeds the statsmodels critical value and not the urca one. The maximum eigenvalue test, on the other hand, rejects r = 0 in both languages (rank_maxeig = `r paste(co_r$rank_maxeig[co_r$pair == "CONVERTS–NVDA" & co_r$period != "post-pivot"], collapse = " / ")` in R). **The CONVERTS–NVDA cointegration is therefore borderline**: it depends on the test and on the table of critical values used. This point is carried into the conclusions.
+* **Engle-Granger.** The ADF statistic on the residuals differs by at most `r fmt(max(abs(ccmp$EG_stat_R - ccmp$EG_stat_Py)))`, because the number of lags chosen by AIC is not exactly the same in ur.df and in statsmodels. The MacKinnon p-value computed by Python remains the reference.
+
+## 5. VECM
+
+```{r vecm}
+# VECM (cajorls, r = 1) on the pairs where PYTHON's trace test finds rank 1 (so parameters can be compared even if urca's tables are stricter).
+vecm_r <- do.call(rbind, lapply(seq_len(nrow(co_r)), function(i) {
+  if (ccmp$rank_trace_Py[ccmp$pair == co_r$pair[i] & ccmp$period == co_r$period[i]] < 1) return(NULL)
+  pr <- strsplit(co_r$pair[i], "–")[[1]]; n <- co_r$period[i]
+  y <- zoo::coredata(LPER[[n]][, pr])
+  cj <- ca.jo(y, type = "trace", ecdet = "none", K = co_r$k_ar_diff[i] + 1, spec = "transitory")
+  cr <- cajorls(cj, r = 1)
+  a <- coef(cr$rlm)["ect1", ]
+  data.frame(pair = co_r$pair[i], period = n, beta_reference = cr$beta[2, 1],
+             alpha_group = a[1], alpha_reference = a[2], half_life_group = half_life(a[1]))
+}))
+py_v <- read.csv(file.path(RES, "04_vecm.csv"), check.names = FALSE)
+vcmp <- merge(vecm_r[, c("pair", "period", "beta_reference", "alpha_group", "half_life_group")],
+              py_v[, c("pair", "period", "beta_reference", "alpha_group", "half-life group (d)")],
+              by = c("pair", "period"), suffixes = c("_R", "_Py"))
+write.csv(vcmp, file.path(RES, "04_vecm_r_vs_python.csv"), row.names = FALSE)
+vcmp
+```
+
+The two languages give the same cointegrating vector and the same adjustment coefficients:
+
+* maximum difference on β = `r fmt(max(abs(vcmp$beta_reference_R - vcmp$beta_reference_Py)))`;
+* maximum difference on the group's α = `r fmt(max(abs(vcmp$alpha_group_R - vcmp$alpha_group_Py)))`;
+* half-lives (in trading days): `r paste(round(vcmp$half_life_group, 1), collapse = " / ")` in R, vs `r paste(round(vcmp[["half-life group (d)"]], 1), collapse = " / ")` in Python.
+
+## Conclusion of the comparison
+
+R (`vars`, `urca`) and Python (`statsmodels`) reach the **same conclusions** on:
+
+* the VAR order;
+* the significant Granger tests;
+* the same-day effects;
+* the Johansen ranks, **except for CONVERTS–NVDA**, whose cointegration (full sample and pre-pivot) is borderline: kept by statsmodels and by the maximum eigenvalue test, rejected by the trace test with urca's table;
+* the VECM parameters.
+
+The differences have two identified causes: the form of the Granger test (F on one equation vs Wald on the system), which changes no conclusion, and the Johansen critical-value tables, which change the conclusion for CONVERTS–NVDA.
+
+```{r session}
+sessionInfo()
+```

@@ -1,206 +1,234 @@
 <div align="center">
 
-# ⛏️ → 🤖 Did Bitcoin miners leave Bitcoin for AI?
+# Did Bitcoin Miners Leave Bitcoin for AI?
 
-**A time-series study of listed Bitcoin miners that pivoted to AI / HPC data centres, compared with those that stayed pure miners**
+**A multivariate time-series study of listed Bitcoin miners that pivoted to AI / HPC data centres, benchmarked against miners that stayed pure Bitcoin**
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](requirements.txt)
-[![R](https://img.shields.io/badge/R-4.6-276DC3?logo=r&logoColor=white)](R/install_packages.R)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](requirements.txt)
+[![R 4.6](https://img.shields.io/badge/R-4.6-276DC3?logo=r&logoColor=white)](R/install_packages.R)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.15-EE4C2C?logo=pytorch&logoColor=white)](requirements.txt)
 [![Data](https://img.shields.io/badge/data-Yahoo%20Finance-6001D2)](data/DATA_DICTIONARY.md)
-[![Status](https://img.shields.io/badge/status-Phase%208%20of%209-orange)](PROGRESS.md)
-[![Reproducible](https://img.shields.io/badge/seed-42-success)](config.yaml)
+[![Tests](https://img.shields.io/badge/tests-pytest%20passing-success)](tests/test_metrics.py)
+[![Reproducible](https://img.shields.io/badge/reproducible-seed%2042%20·%20frozen%20data-success)](config.yaml)
 
-*Time-series mini-project · SDIA ING4 · Tek-Up · Option A (Finance)*
+[Key findings](#key-findings) · [Data](#data) · [Methodology](#methodology) · [Results](#results) · [Reproduce](#reproducing-the-results) · [Limitations](#limitations)
 
-<img src="figures/fig_01_indices_vs_references.png" alt="Equal-weighted index of AI-converted miners, equal-weighted index of pure miners, Bitcoin and NVIDIA, rebased to 100 on 2021-12-14, log scale" width="900">
+<img src="figures/fig_01_indices_vs_references.png" alt="CONVERTS and PURE miner indices, Bitcoin and NVIDIA, rebased to 100 on 2021-12-14, log scale" width="900">
 
 </div>
 
 ---
 
-## 📌 The question
+## Overview
 
-From 2024–2025, several listed Bitcoin miners began renting their power and data-centre capacity to AI and high-performance computing clients. Others stayed pure miners.
+Between 2024 and 2025, several listed Bitcoin miners started leasing their power capacity and data centres to AI and high-performance-computing clients. This project asks whether that business shift shows up in market prices:
 
-> **Did the AI converts lose their long-run link with Bitcoin and become tied to AI stocks, while pure miners stayed tied to Bitcoin?**
+> **Did the AI converts lose their link with Bitcoin and become tied to AI stocks, while pure miners stayed tied to Bitcoin?**
 
-This is tested as two hypotheses. They are **not results yet**: results come in Phases 2–7.
+The study compares two equal-weighted indices over **1,225 US trading days (Dec 2021 – Oct 2026)**. Pure miners are a **control group**: a change that also hits them is a market effect, not an AI effect. The pivot date is **detected from the data** with structural-break tests rather than taken from the news.
 
-| | Hypothesis | Main test |
+The classical econometric core is implemented in **both Python and R**, and the two are cross-checked result by result. Deep learning and the extensions are Python only.
+
+## Key findings
+
+| | Finding | Evidence |
 |---|---|---|
-| **H1** | Pure miners stay cointegrated with Bitcoin across the whole period | Johansen / Engle-Granger, VECM error-correction speed |
-| **H2** | The AI converts' link to Bitcoin weakens, and their link to NVIDIA strengthens, after the pivot | Cointegration and Granger before/after the pivot, rolling correlation, DCC-GARCH |
+| 📍 | **The pivot is detected on 22 Jan 2025**, for converts only | Chow F = 8.63 (p = 1.2·10⁻⁵) for CONVERTS vs p = 0.15 for PURE; robust to removing the most extreme day |
+| 🧠 | **The converts gained AI exposure.** Their same-day response to an NVIDIA shock **doubles** after the pivot | Impulse response 0.0105 → 0.0228 (disjoint 95 % bands); PURE unchanged (0.0140 → 0.0128) |
+| ₿ | **…without leaving Bitcoin.** Their BTC link falls only slightly, and by as much as the pure miners' | BTC shock response −21 % (converts) vs −25 % (pure); BTC remains their largest driver |
+| 🔗 | **No long-run or predictive link with Bitcoin**, for either group | No Johansen cointegration with BTC in any period (**H1 not supported**); no robust Granger causality |
+| 📈 | **Dynamic correlation with NVIDIA rises for converts only** | DCC-GARCH CONVERTS–NVDA 0.33 → 0.42; NVDA overtakes BTC as the more correlated asset on 40 % of post-pivot days (pure miners: 3 %) |
+| 🎯 | **No model beats the random walk** at 1–2 weeks | Best model VECM CONVERTS–NVDA: RMSE −3 % (h = 5) and −6 % (h = 10), not significant (Diebold-Mariano p ≈ 0.5) |
 
-## 🧺 Assets
+**Bottom line:** the converts did not *leave* Bitcoin. They **added** an AI factor on top of it. Consistent with efficient markets, that change is visible in co-movements but cannot be exploited for forecasting.
 
-| Group | Tickers | How they're modelled |
+## Data
+
+| Group | Tickers | Series |
 |---|---|---|
-| 🤖 **AI converts** | `IREN` · `CIFR` · `WULF` | equal-weighted index **`CONVERTS`** |
-| ⛏️ **Pure miners** | `MARA` · `CLSK` · `RIOT` | equal-weighted index **`PURE`** |
-| ₿ **Bitcoin factor** | `BTC-USD` | reference series |
-| 🧠 **AI factor** | `NVDA` | reference series |
-
-The core models work on **4 series** (CONVERTS, PURE, BTC, NVDA). Averaging three firms per group removes much of the single-stock noise (contracts, dilutions, outages). The individual tickers stay in the panel for robustness checks.
-
-<details>
-<summary><b>Why the window starts on 14 Dec 2021</b></summary>
-
-<br>
-
-Yahoo returns WULF prices back to 1994 and CIFR prices back to 2020, but those rows belong to **other companies**. Before the mergers, WULF was IKONICS Corp. and CIFR was the Good Works SPAC. IREN only listed on 2021-11-17. The study therefore starts at TeraWulf's first trading session, **2021-12-14**, which gives 4.88 years of clean data. Full reasoning: [`data/DATA_DICTIONARY.md`](data/DATA_DICTIONARY.md).
-
-</details>
-
-## 📊 Dataset at a glance
+| AI / HPC converts | `IREN` · `CIFR` · `WULF` | equal-weighted index **`CONVERTS`** (studied group) |
+| Pure Bitcoin miners | `MARA` · `CLSK` · `RIOT` | equal-weighted index **`PURE`** (control group) |
+| Bitcoin factor | `BTC-USD` | reference |
+| AI factor | `NVDA` | reference |
 
 | | |
 |---|---|
-| **Source** | Yahoo Finance via `yfinance` 1.8.0, frozen on 2026-11-09 |
-| **Period** | 2021-12-14 → 2026-10-30 (daily) |
-| **Observations** | **1,225** US trading days × **100** columns |
-| **Calendar** | US stock trading days. BTC is sampled on those days (its weekend prices are dropped) |
-| **Prices** | `Adj Close` (adjusted for splits and dividends) |
+| **Source** | Yahoo Finance via `yfinance` 1.8.0, downloaded once on 2026-11-09 and frozen |
+| **Window** | 2021-12-14 → 2026-10-30 · **1,225** trading days × 100 columns |
+| **Prices** | `Adj Close` (splits and dividends, including NVDA's 10-for-1 split of June 2024) |
+| **Calendar** | US stock trading days; BTC (traded 7 days a week) is sampled on those days |
+| **Indices** | mean of members' daily log returns, cumulated and rebased to 100 |
 | **Features** | log price, log return, 20-day realised volatility (annualised), 20/50-day moving averages |
-| **Split** | chronological 90 / 10 → **train** 1,102 rows (→ 2026-05-06) · **test** 123 rows (2026-05-07 →) |
-| **Missing values** | none after alignment. One Yahoo placeholder row (CLSK, 2024-11-08) forward-filled and logged |
+| **Split** | chronological 90 / 10: train 1,102 days (→ 2026-05-06), test 123 days (2026-05-07 →), test entirely post-pivot |
+| **Cleaning** | one Yahoo placeholder row (CLSK, 2024-11-08) forward-filled and logged; no other missing value |
 
-<img src="figures/fig_01_rebased_prices_by_group.png" alt="Rebased prices of the individual tickers in three panels: AI converts, pure miners, references" width="100%">
+<details>
+<summary><b>Why the window starts on 14 Dec 2021 (4.88 years instead of 5)</b></summary>
 
-## 🔬 Methodology
+<br>
+
+Before their mergers, Yahoo's WULF history belongs to IKONICS Corp. and CIFR's to the Good Works SPAC; IREN only listed on 2021-11-17. The window therefore starts at TeraWulf's first trading session, which is visible in the raw data as a ≈7× jump in traded volume. Full reasoning in [`data/DATA_DICTIONARY.md`](data/DATA_DICTIONARY.md).
+
+</details>
+
+## Methodology
 
 ```mermaid
 flowchart LR
-    A[Yahoo Finance<br/>8 tickers] --> B[Raw CSVs<br/>frozen]
-    B --> C[Align on<br/>trading days]
-    C --> D[Features +<br/>CONVERTS / PURE]
-    D --> E[(panel.csv<br/>panel.parquet)]
-    E --> F[EDA<br/>ADF · KPSS · STL<br/>pivot-date detection]
-    F --> G[ARIMA]
-    F --> H[VAR · Granger<br/>Johansen · VECM]
-    F --> I[GARCH]
-    F --> J[LSTM · GRU]
-    G & H & I & J --> K[Forecast h=5–10<br/>RMSE · MAE · MAPE<br/>Diebold-Mariano]
-    K --> L[LLM analysis<br/>+ critique]
-    L --> M[Report]
+    A[Yahoo Finance<br/>8 tickers] --> B[Frozen raw CSVs]
+    B --> C[Calendar alignment<br/>features · indices]
+    C --> D[(panel.csv<br/>panel.parquet)]
+    D --> E[EDA · ADF/KPSS · STL<br/>pivot-date detection]
+    E --> F[ARIMA]
+    E --> G[VAR · Granger · IRF<br/>Johansen · VECM]
+    E --> H[GARCH family]
+    E --> I[LSTM · GRU · hybrid]
+    F & G & H & I --> J[Common forecast format<br/>RMSE · MAE · MAPE<br/>Diebold-Mariano]
+    J --> K[DCC-GARCH<br/>rolling correlation]
+    K --> L[LLM critique<br/>+ report]
 ```
 
-The classical econometric core (ARIMA, VAR/VECM, GARCH) is implemented in **both Python and R**, as the brief requires (§8.1). The deep-learning models and the extensions are **Python only**, and each of those notebooks says so at the top.
+| Phase | Content | Python | R |
+|:-:|---|:-:|:-:|
+| 1 | Download, calendar alignment, features, indices, 90/10 split | `01_data.ipynb` | `01_data.Rmd` |
+| 2 | Descriptive stats, ACF/PACF, STL, outliers, ADF + KPSS, **structural breaks** (Chow scan, Bai-Perron) | `02_eda.ipynb` | — |
+| 3 | ARIMA / SARIMA identification, residual diagnostics, random-walk baseline | `03_arima.ipynb` | `03_arima.Rmd` |
+| 4 | VAR, Granger causality, impulse responses, Johansen / Engle-Granger, VECM, pre vs post pivot | `04_var_vecm.ipynb` | `04_var_vecm.Rmd` |
+| 5 | ARCH-LM, GARCH / GJR / EGARCH (Normal and Student-t), volatility around events | `05_garch.ipynb` | `05_garch.Rmd` |
+| 6 | LSTM and GRU grid, walk-forward validation, ARIMA + LSTM hybrid | `06_deep_learning.ipynb` | — |
+| 7 | Out-of-sample evaluation, Diebold-Mariano, rolling correlation, DCC-GARCH | `07_evaluation.ipynb` | `07_dcc.Rmd` |
+| 8 | Generative-AI critique: LLM given a numbers-only summary, answers checked claim by claim | `llm/` | — |
 
-Every model is fitted on the same frozen snapshot and the same chronological split, and writes its test-set forecasts in one common format (`date, model, horizon, y_true, y_pred, lower, upper`) to `results/forecasts_<model>.csv`. Phase 7 then compares all models from these files alone.
+**Evaluation protocol.** Every model is fitted on the training set only (never re-estimated) and forecasts the CONVERTS level 1–10 days ahead from rolling origins over the same test dates. Forecasts are written in one shared format (`date, model, horizon, y_true, y_pred, lower, upper`) to `results/forecasts_<model>.csv`, so Phase 7 compares all models from these files alone.
 
-## 🗺️ Roadmap
+**Cross-language validation.** Each R notebook reads the outputs of the Python notebook with the same number and compares them: identical input data (max relative difference 4.3·10⁻¹⁶), ARIMA coefficients within 1.5 %, DCC trajectories correlated at ≥ 0.9996. The Diebold-Mariano implementation in `src/metrics.py` is unit-tested against R's `forecast::dm.test` to 10⁻⁸.
 
-| # | Phase | Brief | Grading block | Deliverable | Status |
-|:-:|---|:-:|:-:|---|:-:|
-| 1 | Data: download, alignment, features, indices, split | §1 | A | `01_data.ipynb` · `01_data.Rmd` | ✅ |
-| 2 | EDA: ACF/PACF, STL, outliers, ADF + KPSS, **pivot-date detection** | §1.3, §2 | A | `02_eda.ipynb` | ✅ |
-| 3 | ARIMA / SARIMA + residual diagnostics, random-walk baseline | §3.1 | A | `03_arima` (py + R) | ✅ |
-| 4 | VAR, Granger, Johansen, VECM, before vs after the pivot | §3.2 | A + D | `04_var_vecm` (py + R) | ✅ |
-| 5 | ARCH-LM, GARCH family, conditional volatility vs events | §3.3 | B | `05_garch` (py + R) | ✅ |
-| 6 | LSTM / GRU, walk-forward validation, ARIMA + LSTM hybrid | §4 | B + D | `06_deep_learning.ipynb` | ✅ |
-| 7 | Forecast evaluation, Diebold-Mariano, rolling correlation, DCC-GARCH | §6, §7 | A + D | `07_evaluation.ipynb` · `07_dcc.Rmd` | ✅ |
-| 8 | LLM-assisted analysis and critique (done by hand with a real LLM) | §5 | C | `llm/` | 🟡 material ready, student's turn |
-| 9 | Report, defence notes, final reproducibility check | §8 | all | `report/` | ⬜ |
+## Results
 
-Grading blocks from the brief (§9): **A** fundamentals (10 pts) · **B** advanced modelling (4) · **C** generative AI and LLM (4) · **D** depth and extensions (2).
+### Short-run exposure: impulse responses before and after the pivot
 
-A detailed log of decisions and open questions is in [`PROGRESS.md`](PROGRESS.md).
+<img src="figures/fig_04_01_irf_pre_post.png" alt="Orthogonalised impulse responses of CONVERTS and PURE to BTC and NVDA shocks, before and after the pivot" width="900">
 
-## 🧾 Results
+### Dynamic correlation: NVIDIA overtakes Bitcoin for the converts only
 
-> *No results yet.* This section is filled in as phases finish, and every number here will come from an executed notebook in `results/`.
+<img src="figures/fig_07_03_rolling_corr_crossing.png" alt="90-day rolling correlation of each miner group with BTC and NVDA; shaded where CONVERTS is more correlated with NVDA than with BTC" width="900">
 
-| Question | Evidence | Answer |
-|---|---|---|
-| Pivot date of the AI converts | rolling correlation, rolling Engle-Granger, break test (Phase 2) | **2025-01-22**: CONVERTS β on BTC 1.03 → 0.71, on NVDA 0.31 → 0.87, no break for PURE (moderate evidence, see `02_eda.ipynb` §6) |
-| **H1**: pure miners stay cointegrated with BTC | Johansen / Engle-Granger, VECM α (Phase 4) | **Not supported**: Johansen finds no PURE–BTC cointegration in any period; only Engle-Granger on the full sample (p = 0.045) |
-| **H2**: converts move from BTC to NVDA after the pivot | pre/post Granger and cointegration (Phase 4), rolling correlation, DCC (Phase 7) | **Partly**: the same-day response of CONVERTS to an NVDA shock doubles (0.0105 → 0.0228) while PURE's does not, but the BTC link stays and no Granger lead appears. CONVERTS was never cointegrated with BTC; the CONVERTS–NVDA link is borderline and pre-pivot only. DCC pending (Phase 7) |
-| Best forecasting model at h = 5 and h = 10 | RMSE · MAE · MAPE + Diebold-Mariano vs random walk (Phase 7) | **VECM CONVERTS–NVDA** has the lowest error (RMSE −3 % at h = 5, −6 % at h = 10 vs the random walk) but the gain is **not significant** (DM p ≈ 0.5). No model beats the random walk significantly; the hybrid is significantly worse |
-| Dynamic correlation | rolling 90-day correlation, DCC-GARCH (Phase 7) | After the pivot, CONVERTS is more correlated with NVDA than with BTC on 40 % of days (pure miners: 3 %); DCC correlation CONVERTS–NVDA 0.33 → 0.42, CONVERTS–BTC 0.50 → 0.48 |
+| Pair | DCC correlation pre-pivot | DCC correlation post-pivot |
+|---|:-:|:-:|
+| CONVERTS – NVDA | 0.334 | **0.418** |
+| CONVERTS – BTC | 0.501 | 0.477 |
+| PURE – NVDA | 0.409 | 0.418 |
+| PURE – BTC | 0.650 | 0.634 |
 
-## 🚀 Quick start
+### Forecasting: test-set accuracy relative to the random walk
+
+<img src="figures/fig_07_01_model_comparison.png" alt="RMSE of each model divided by the random-walk RMSE, at h = 5 and h = 10" width="800">
+
+| Model | RMSE h = 5 | ratio vs RW | RMSE h = 10 | ratio vs RW | DM vs RW (h = 5) |
+|---|:-:|:-:|:-:|:-:|---|
+| **VECM CONVERTS–NVDA** | **27.86** | **0.969** | **33.78** | **0.936** | not significant (p = 0.49) |
+| Random walk | 28.77 | 1.000 | 36.10 | 1.000 | — |
+| ARIMA(0,1,1) | 28.85 | 1.003 | 36.15 | 1.001 | not significant |
+| ARIMA + LSTM hybrid | 29.09 | 1.011 | 36.99 | 1.025 | **worse** (p = 0.009) |
+| VAR(1) | 29.15 | 1.013 | 37.10 | 1.028 | not significant |
+| LSTM | 29.53 | 1.026 | 38.53 | 1.068 | not significant |
+| GRU | 30.13 | 1.047 | 40.07 | 1.110 | not significant |
+
+Errors in index points (the CONVERTS index starts at 100). Full table, including MAE, MAPE, interval coverage and training time: [`results/model_comparison.csv`](results/model_comparison.csv).
+
+<details>
+<summary><b>More results</b></summary>
+
+<br>
+
+- **Stationarity.** Log prices are I(1) for all four series (ADF and KPSS agree); log returns are stationary.
+- **No seasonality.** STL seasonal strength ≤ 0.03 (weekly), no day-of-week effect (ANOVA p ≥ 0.26), so no SARIMA.
+- **ARIMA.** CONVERTS is a random walk: ARIMA(0,1,0) is chosen by BIC, `auto_arima` and R's `auto.arima`.
+- **Cointegration.** Only CONVERTS–NVDA is cointegrated, on the full and pre-pivot samples, and the result is borderline (it depends on the critical-value table). Half-life of deviations ≈ 64 trading days.
+- **Volatility.** GARCH(1,1) with Student-t errors is retained. There is a clear ARCH effect for PURE, BTC and NVDA, but not for the CONVERTS index (firm-specific spikes dilute in the average). After the pivot, CONVERTS volatility co-moves as much with NVDA (0.31) as with BTC (0.27), against 0.06 and 0.32 before.
+- **Deep learning.** All 12 LSTM/GRU configurations end at random-walk level (validation-loss ratio 0.995–0.9997). Walk-forward validation (5 expanding folds) confirms it.
+
+The decision log behind every result is in [`PROGRESS.md`](PROGRESS.md).
+
+</details>
+
+## Reproducing the results
 
 ```bash
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/ghadakhchimi5-dot/Bitcoin-miners.git
+cd Bitcoin-miners
 ```
 
 **Python 3.11**
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate            # Windows
-# source .venv/bin/activate       # macOS / Linux
+.venv\Scripts\activate              # Windows
+# source .venv/bin/activate         # macOS / Linux
 pip install -r requirements.txt
-jupyter nbconvert --to notebook --execute --inplace notebooks/python/01_data.ipynb
+
+jupyter nbconvert --to notebook --execute --inplace notebooks/python/*.ipynb
+python -m pytest tests -q
+python llm/make_stats_summary.py
 ```
 
-**R ≥ 4.1** (plus [pandoc](https://pandoc.org/installing.html), which RStudio already bundles)
+**R ≥ 4.1** (with [pandoc](https://pandoc.org/installing.html), bundled with RStudio)
 
 ```bash
 Rscript R/install_packages.R
-Rscript -e "rmarkdown::render('notebooks/r/01_data.Rmd')"
+Rscript -e "for (f in sort(Sys.glob('notebooks/r/*.Rmd'))) rmarkdown::render(f)"
 ```
 
-Run the notebooks in numerical order, **Python before R** for each phase. Each R notebook reads the panel and the result files written by the Python notebook with the same number, and checks that both languages agree. Every path is relative: the code finds the project root by looking for `config.yaml`.
+Run each R notebook **after** the Python notebook with the same number: the R side reads the Python outputs and checks agreement.
 
-Running `01_data.ipynb` does **not** call Yahoo Finance when `data/raw/` is already filled: a ticker is only downloaded if its CSV is missing. To rebuild the snapshot from scratch on purpose, call `download_raw(force=True)` from `src/data.py` (results will then change slightly, see below).
+- **Frozen data.** `01_data.ipynb` never calls Yahoo when `data/raw/` is filled, because Yahoo revises adjusted history. Use `download_raw(force=True)` from `src/data.py` only to rebuild the snapshot on purpose (results will change slightly).
+- **Single configuration.** Tickers, dates, seed (42), split and pivot date live in [`config.yaml`](config.yaml), which both languages read. All paths are relative to the folder containing it.
+- **Deterministic training.** PyTorch runs in deterministic mode with a fixed seed; seed sensitivity is reported in `results/06_seed_sensitivity.csv`.
 
-## 🧭 Project conventions
-
-- **One phase at a time**, in order (2 → 9). Each phase ends by re-running its notebooks from a fresh kernel and updating [`PROGRESS.md`](PROGRESS.md), which is the project's memory.
-- **Code comments say *why***, not what: one line per block justifying the choice (brief §8.1).
-- **Every statistical test** states H0, the statistic, the p-value and a written conclusion. All commentary (notebooks, report, LLM material) is in **English**.
-- **No invented numbers:** every figure quoted in text comes from executed output. Non-significant or failed results are reported as they are.
-- **Naming:** figures `figures/fig_<phase>_<nn>_<name>.png`, tables `results/<phase>_<name>.csv`, forecasts `results/forecasts_<model>.csv`.
-- **Shared helpers** go in `src/` (Python) and `R/` (R), never copy-pasted between notebooks.
-
-## 📁 Repository layout
+## Repository structure
 
 ```
-├── config.yaml              # tickers, groups, dates, seed, split: the single source of truth
+├── config.yaml             # single source of truth: tickers, groups, dates, seed, split, pivot date
 ├── data/
-│   ├── raw/                 # one CSV per ticker, as downloaded (+ _download_log.json)
-│   ├── processed/           # panel.csv / panel.parquet used by every notebook
-│   └── DATA_DICTIONARY.md   # every column, unit, adjustment and cleaning rule
+│   ├── raw/                # one frozen CSV per ticker + _download_log.json
+│   ├── processed/          # panel.csv / panel.parquet, read by every notebook
+│   └── DATA_DICTIONARY.md  # columns, units, adjustments, cleaning rules
 ├── notebooks/
-│   ├── python/              # 01_data.ipynb → 07_evaluation.ipynb
-│   └── r/                   # 01_data.Rmd → 05_garch.Rmd (+ knitted .html)
-├── src/                     # Python helpers: config.py · data.py · plotting.py (metrics.py in Phase 7)
-├── R/                       # R helpers: load_data.R · install_packages.R
-├── figures/                 # fig_<phase>_<nn>_<name>.png
-├── results/                 # tables (CSV) and forecasts_<model>.csv
-├── llm/                     # statistics summary, prompts, full LLM answers, human-vs-LLM comparison
-├── report/                  # final report (English, report.docx / report.pdf) + defence notes
-├── docs/                    # project brief (in French, from the course)
-├── PROGRESS.md              # phase log: what was done, key numbers, decisions, open questions
-└── requirements.txt         # pinned Python packages
+│   ├── python/             # 01_data → 07_evaluation
+│   └── r/                  # 01, 03, 04, 05, 07 (.Rmd + knitted .html)
+├── src/                    # Python package: data, eda, arima, multivariate, garch, dl, dcc, metrics, plotting
+├── R/                      # R helpers: data loading, ARIMA, VAR, package installer
+├── tests/                  # unit tests (Diebold-Mariano and point metrics vs R)
+├── figures/                # fig_<phase>_<nn>_<name>.png
+├── results/                # result tables and forecasts_<model>.csv
+├── llm/                    # numbers-only summary, prompts, error checklist, comparison templates
+├── docs/                   # course brief (French)
+├── PROGRESS.md             # phase-by-phase log of decisions, key numbers and open questions
+└── requirements.txt        # pinned Python environment
 ```
 
-## ♻️ Reproducibility
+## Limitations
 
-- **Frozen data:** raw files are downloaded once and never refreshed automatically. Yahoo back-adjusts and revises its history, so downloading again would silently change results.
-- **One config:** dates, seed (`42`), split and groups live in [`config.yaml`](config.yaml) and are read by both languages.
-- **Cross-language check:** `01_data.Rmd` recomputes summary statistics and compares them with Python's. The largest relative difference is 4.3 × 10⁻¹⁶.
-- **Pinned environment:** Python versions in [`requirements.txt`](requirements.txt). R versions are printed by `install_packages.R` and by `sessionInfo()` in every R notebook.
+- **Short post-pivot sample.** 447 days after the pivot limits the power of cointegration tests and leaves post-pivot GARCH persistence poorly identified.
+- **Pivot date found by scanning.** Chow p-values are therefore optimistic, and the transition looks gradual through 2025. 2024-02-27 and 2025-08-13 are kept as robustness dates.
+- **Close-time mismatch.** BTC closes at 24:00 UTC, 3–4 hours after US stocks, and a Monday BTC return covers the weekend. This affects the Cholesky ordering of impulse responses.
+- **Small baskets.** With three firms per index, a single contract or dilution still weighs heavily.
+- **Single test regime.** 123 test days, all post-pivot and falling at the end. Transaction costs and liquidity are not modelled.
+- **Granger ≠ causality.** "Helps predict" is not economic causation.
 
-## ⚠️ Known limitations
+## Project status
 
-- **Window length:** the window is 4.88 years rather than 5, because the AI converts were only listed from 2021.
-- **Close timing:** BTC's daily close (24:00 UTC) and the US stock close (20:00–21:00 UTC) are 3–4 hours apart. Same-day lead/lag effects must be read with care.
-- **Calendar:** a Monday BTC return covers the whole weekend.
-- **Basket size:** three small-cap firms per group still leaves some firm-specific noise in each index.
-- **Pivot date:** 2025-01-22 was detected from the data (break tests with PURE as control), not taken from the news. The Chow p-values are optimistic because the date was found by scanning, and the shift looks gradual (2025). 2024-02-27 and 2025-08-13 are kept as robustness dates.
-- **Short test set:** the 10 % test window is 123 trading days (2026-05-07 → 2026-10-30), possibly after the pivot. Forecast comparisons describe that one regime only.
-- **Not causality:** Granger causality means "helps predict", not "causes". The report reads it that way.
+Phases 1–7 are complete and reproducible from a fresh environment. Phase 8 (the generative-AI critique) has its material ready in `llm/`; the LLM experiment itself is carried out by hand. The written report is being finalised.
 
-## 📚 Data & credits
+## Author
 
-- Prices: [Yahoo Finance](https://finance.yahoo.com) via [`yfinance`](https://github.com/ranaroussi/yfinance). The data is subject to Yahoo's terms of use and is provided here for educational purposes only.
-- Course: *Séries Temporelles pour Data Science & IA*, Tek-Up.
+**Ghada Khchimi** · Data Science & AI engineering student (SDIA), Tek-Up University
+[Portfolio](https://ghada-khchimi.vercel.app/) · [GitHub](https://github.com/ghadakhchimi5-dot)
 
-> **Disclaimer:** this is an academic project. Nothing in this repository is investment advice.
+Developed as the mini-project of the course *Séries temporelles pour la Data Science & l'IA* (Option A: financial data).
 
-<div align="center">
-<sub>Made by <b>&lt;your name&gt;</b> · SDIA ING4 · Tek-Up · 2026</sub>
-</div>
+## Data & disclaimer
+
+Prices come from [Yahoo Finance](https://finance.yahoo.com) via [`yfinance`](https://github.com/ranaroussi/yfinance) and are subject to Yahoo's terms of use; they are included for educational purposes only.
+
+> This is an academic project. Nothing in this repository is investment advice.

@@ -1,0 +1,27 @@
+# Python 3.11.9 — pinned versions used to produce the results (Phase 1).
+# Later phases will add statsmodels, pmdarima, arch, scikit-learn, torch/tensorflow (pinned when introduced).
+yfinance==1.8.0
+pandas==3.1.1
+numpy==2.4.6
+pyarrow==26.0.1
+matplotlib==3.11.2
+PyYAML==6.0.3
+jupyter==1.1.1
+notebook==7.6.5
+nbconvert==7.17.2
+nbformat==5.11.1
+ipykernel==7.4.0
+# Phase 2 (EDA, stationarity tests, break detection)
+statsmodels==0.15.0
+scipy==1.17.1
+ruptures==1.1.10
+# Phase 3 (ARIMA)
+pmdarima==2.1.1
+# Phase 5 (GARCH)
+arch==9.0.0
+# Phase 6 (deep learning, CPU build of PyTorch)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu
+scikit-learn==1.9.1
+# Phase 7 (unit tests of src/metrics.py: python -m pytest tests -q)
+pytest==9.2.0

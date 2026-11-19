@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](requirements.txt)
 [![R](https://img.shields.io/badge/R-4.6-276DC3?logo=r&logoColor=white)](R/install_packages.R)
 [![Data](https://img.shields.io/badge/data-Yahoo%20Finance-6001D2)](data/DATA_DICTIONARY.md)
-[![Status](https://img.shields.io/badge/status-Phase%201%20of%209-orange)](PROGRESS.md)
+[![Status](https://img.shields.io/badge/status-Phase%208%20of%209-orange)](PROGRESS.md)
 [![Reproducible](https://img.shields.io/badge/seed-42-success)](config.yaml)
 
 *Time-series mini-project · SDIA ING4 · Tek-Up · Option A (Finance)*
@@ -93,13 +93,13 @@ Every model is fitted on the same frozen snapshot and the same chronological spl
 | # | Phase | Brief | Grading block | Deliverable | Status |
 |:-:|---|:-:|:-:|---|:-:|
 | 1 | Data: download, alignment, features, indices, split | §1 | A | `01_data.ipynb` · `01_data.Rmd` | ✅ |
-| 2 | EDA: ACF/PACF, STL, outliers, ADF + KPSS, **pivot-date detection** | §1.3, §2 | A | `02_eda.ipynb` | ⏭️ next |
-| 3 | ARIMA / SARIMA + residual diagnostics, random-walk baseline | §3.1 | A | `03_arima` (py + R) | ⬜ |
-| 4 | VAR, Granger, Johansen, VECM, before vs after the pivot | §3.2 | A + D | `04_var_vecm` (py + R) | ⬜ |
-| 5 | ARCH-LM, GARCH family, conditional volatility vs events | §3.3 | B | `05_garch` (py + R) | ⬜ |
-| 6 | LSTM / GRU, walk-forward validation, ARIMA + LSTM hybrid | §4 | B + D | `06_deep_learning.ipynb` | ⬜ |
-| 7 | Forecast evaluation, Diebold-Mariano, rolling correlation, DCC-GARCH | §6, §7 | A + D | `07_evaluation.ipynb` | ⬜ |
-| 8 | LLM-assisted analysis and critique (done by hand with a real LLM) | §5 | C | `llm/` | ⬜ |
+| 2 | EDA: ACF/PACF, STL, outliers, ADF + KPSS, **pivot-date detection** | §1.3, §2 | A | `02_eda.ipynb` | ✅ |
+| 3 | ARIMA / SARIMA + residual diagnostics, random-walk baseline | §3.1 | A | `03_arima` (py + R) | ✅ |
+| 4 | VAR, Granger, Johansen, VECM, before vs after the pivot | §3.2 | A + D | `04_var_vecm` (py + R) | ✅ |
+| 5 | ARCH-LM, GARCH family, conditional volatility vs events | §3.3 | B | `05_garch` (py + R) | ✅ |
+| 6 | LSTM / GRU, walk-forward validation, ARIMA + LSTM hybrid | §4 | B + D | `06_deep_learning.ipynb` | ✅ |
+| 7 | Forecast evaluation, Diebold-Mariano, rolling correlation, DCC-GARCH | §6, §7 | A + D | `07_evaluation.ipynb` · `07_dcc.Rmd` | ✅ |
+| 8 | LLM-assisted analysis and critique (done by hand with a real LLM) | §5 | C | `llm/` | 🟡 material ready, student's turn |
 | 9 | Report, defence notes, final reproducibility check | §8 | all | `report/` | ⬜ |
 
 Grading blocks from the brief (§9): **A** fundamentals (10 pts) · **B** advanced modelling (4) · **C** generative AI and LLM (4) · **D** depth and extensions (2).
@@ -112,10 +112,11 @@ A detailed log of decisions and open questions is in [`PROGRESS.md`](PROGRESS.md
 
 | Question | Evidence | Answer |
 |---|---|---|
-| Pivot date of the AI converts | rolling correlation, rolling Engle-Granger, break test (Phase 2) | *pending* |
-| **H1**: pure miners stay cointegrated with BTC | Johansen / Engle-Granger, VECM α (Phase 4) | *pending* |
-| **H2**: converts move from BTC to NVDA after the pivot | pre/post Granger and cointegration (Phase 4), rolling correlation, DCC (Phase 7) | *pending* |
-| Best forecasting model at h = 5 and h = 10 | RMSE · MAE · MAPE + Diebold-Mariano vs random walk (Phase 7) | *pending* |
+| Pivot date of the AI converts | rolling correlation, rolling Engle-Granger, break test (Phase 2) | **2025-01-22**: CONVERTS β on BTC 1.03 → 0.71, on NVDA 0.31 → 0.87, no break for PURE (moderate evidence, see `02_eda.ipynb` §6) |
+| **H1**: pure miners stay cointegrated with BTC | Johansen / Engle-Granger, VECM α (Phase 4) | **Not supported**: Johansen finds no PURE–BTC cointegration in any period; only Engle-Granger on the full sample (p = 0.045) |
+| **H2**: converts move from BTC to NVDA after the pivot | pre/post Granger and cointegration (Phase 4), rolling correlation, DCC (Phase 7) | **Partly**: the same-day response of CONVERTS to an NVDA shock doubles (0.0105 → 0.0228) while PURE's does not, but the BTC link stays and no Granger lead appears. CONVERTS was never cointegrated with BTC; the CONVERTS–NVDA link is borderline and pre-pivot only. DCC pending (Phase 7) |
+| Best forecasting model at h = 5 and h = 10 | RMSE · MAE · MAPE + Diebold-Mariano vs random walk (Phase 7) | **VECM CONVERTS–NVDA** has the lowest error (RMSE −3 % at h = 5, −6 % at h = 10 vs the random walk) but the gain is **not significant** (DM p ≈ 0.5). No model beats the random walk significantly; the hybrid is significantly worse |
+| Dynamic correlation | rolling 90-day correlation, DCC-GARCH (Phase 7) | After the pivot, CONVERTS is more correlated with NVDA than with BTC on 40 % of days (pure miners: 3 %); DCC correlation CONVERTS–NVDA 0.33 → 0.42, CONVERTS–BTC 0.50 → 0.48 |
 
 ## 🚀 Quick start
 
@@ -141,7 +142,7 @@ Rscript R/install_packages.R
 Rscript -e "rmarkdown::render('notebooks/r/01_data.Rmd')"
 ```
 
-Run the notebooks in numerical order. Each R notebook reads the panel produced by the Python notebook with the same number. Every path is relative: the code finds the project root by looking for `config.yaml`.
+Run the notebooks in numerical order, **Python before R** for each phase. Each R notebook reads the panel and the result files written by the Python notebook with the same number, and checks that both languages agree. Every path is relative: the code finds the project root by looking for `config.yaml`.
 
 Running `01_data.ipynb` does **not** call Yahoo Finance when `data/raw/` is already filled: a ticker is only downloaded if its CSV is missing. To rebuild the snapshot from scratch on purpose, call `download_raw(force=True)` from `src/data.py` (results will then change slightly, see below).
 
@@ -149,7 +150,7 @@ Running `01_data.ipynb` does **not** call Yahoo Finance when `data/raw/` is alre
 
 - **One phase at a time**, in order (2 → 9). Each phase ends by re-running its notebooks from a fresh kernel and updating [`PROGRESS.md`](PROGRESS.md), which is the project's memory.
 - **Code comments say *why***, not what: one line per block justifying the choice (brief §8.1).
-- **Every statistical test** states H0, the statistic, the p-value and a written conclusion. Markdown commentary in the notebooks is in **French**.
+- **Every statistical test** states H0, the statistic, the p-value and a written conclusion. All commentary (notebooks, report, LLM material) is in **English**.
 - **No invented numbers:** every figure quoted in text comes from executed output. Non-significant or failed results are reported as they are.
 - **Naming:** figures `figures/fig_<phase>_<nn>_<name>.png`, tables `results/<phase>_<name>.csv`, forecasts `results/forecasts_<model>.csv`.
 - **Shared helpers** go in `src/` (Python) and `R/` (R), never copy-pasted between notebooks.
@@ -170,8 +171,8 @@ Running `01_data.ipynb` does **not** call Yahoo Finance when `data/raw/` is alre
 ├── figures/                 # fig_<phase>_<nn>_<name>.png
 ├── results/                 # tables (CSV) and forecasts_<model>.csv
 ├── llm/                     # statistics summary, prompts, full LLM answers, human-vs-LLM comparison
-├── report/                  # final report (French) + defence notes
-├── docs/                    # project brief (cahier des charges)
+├── report/                  # final report (English, report.docx / report.pdf) + defence notes
+├── docs/                    # project brief (in French, from the course)
 ├── PROGRESS.md              # phase log: what was done, key numbers, decisions, open questions
 └── requirements.txt         # pinned Python packages
 ```
@@ -189,7 +190,7 @@ Running `01_data.ipynb` does **not** call Yahoo Finance when `data/raw/` is alre
 - **Close timing:** BTC's daily close (24:00 UTC) and the US stock close (20:00–21:00 UTC) are 3–4 hours apart. Same-day lead/lag effects must be read with care.
 - **Calendar:** a Monday BTC return covers the whole weekend.
 - **Basket size:** three small-cap firms per group still leaves some firm-specific noise in each index.
-- **Pivot date:** not fixed yet (`pivot_date: null`). It will be detected from the data in Phase 2 rather than taken from the news.
+- **Pivot date:** 2025-01-22 was detected from the data (break tests with PURE as control), not taken from the news. The Chow p-values are optimistic because the date was found by scanning, and the shift looks gradual (2025). 2024-02-27 and 2025-08-13 are kept as robustness dates.
 - **Short test set:** the 10 % test window is 123 trading days (2026-05-07 → 2026-10-30), possibly after the pivot. Forecast comparisons describe that one regime only.
 - **Not causality:** Granger causality means "helps predict", not "causes". The report reads it that way.
 

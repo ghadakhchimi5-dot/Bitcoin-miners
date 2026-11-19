@@ -1,21 +1,6 @@
-<div align="center">
-
 # Did Bitcoin Miners Leave Bitcoin for AI?
 
-**A multivariate time-series study of listed Bitcoin miners that pivoted to AI / HPC data centres, benchmarked against miners that stayed pure Bitcoin**
-
-[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](requirements.txt)
-[![R 4.6](https://img.shields.io/badge/R-4.6-276DC3?logo=r&logoColor=white)](R/install_packages.R)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.15-EE4C2C?logo=pytorch&logoColor=white)](requirements.txt)
-[![Data](https://img.shields.io/badge/data-Yahoo%20Finance-6001D2)](data/DATA_DICTIONARY.md)
-[![Tests](https://img.shields.io/badge/tests-pytest%20passing-success)](tests/test_metrics.py)
-[![Reproducible](https://img.shields.io/badge/reproducible-seed%2042%20·%20frozen%20data-success)](config.yaml)
-
-[Key findings](#key-findings) · [Data](#data) · [Methodology](#methodology) · [Results](#results) · [Reproduce](#reproducing-the-results) · [Limitations](#limitations)
-
-<img src="figures/fig_01_indices_vs_references.png" alt="CONVERTS and PURE miner indices, Bitcoin and NVIDIA, rebased to 100 on 2021-12-14, log scale" width="900">
-
-</div>
+A multivariate time-series study of listed Bitcoin miners that pivoted to AI / HPC data centres, benchmarked against miners that stayed pure Bitcoin.
 
 ---
 

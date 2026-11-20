@@ -9,6 +9,9 @@
 | `answers/` | Prompts sent and **full** LLM answers (report appendix) | **student** (copy) |
 | `comparison_TEMPLATE.md` | Table: LLM statement / correct? / error type / correction / evidence | **student** |
 | `CHECKLIST_LLM_ERRORS.md` | Typical errors to look for on this project, with the reference to check each one | — |
+| `run_ollama.py` | Optional: sends prompts a–d to a **local** Ollama model (default `qwen2.5:3b`) following `prompts.md` exactly, and writes `answers/prompt_a..d.md` verbatim with model/version/date headers. Refuses to run before `my_interpretation.md` exists, and never overwrites answers without `--force` | code |
+
+**Local run:** Ollama running (installed via `winget install Ollama.Ollama`; model via `ollama pull qwen2.5:3b`), then `.venv\Scripts\python.exe llm/run_ollama.py` (about 10–20 min on CPU). `--model` selects another pulled model.
 
 **Order:**
 1. `my_interpretation.md`;
